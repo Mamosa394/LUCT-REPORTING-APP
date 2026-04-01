@@ -5,9 +5,9 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer, StatsCard, LoadingSpinner, Card } from '../../src/components/UI';
 import { COLORS, spacing, typography } from '../../src/config/theme';
-import { fetchDashboardStats } from '../../src/store/monitoringslice';
+import { fetchDashboardStats } from '../../src/store/monitoringSlice';
 import { fetchCourses } from '../../src/store/courseSlice';
-import { fetchReports } from '../../src/store/monitoringslice';
+import { fetchReports } from '../../src/store/monitoringSlice';
 
 export default function PLDashboard({ navigation }) {
   const dispatch = useDispatch();

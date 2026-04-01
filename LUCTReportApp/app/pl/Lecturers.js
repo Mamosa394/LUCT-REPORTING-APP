@@ -4,8 +4,8 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'rea
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer, LoadingSpinner, AppModal, Input, Button, Card } from '../../src/components/UI';
-import { COLORS, spacing, typography } from '../../src/config/theme';
-import { fetchLecturers, createLecturer, updateLecturer, deleteLecturer } from '../../src/store/monitoringslice';
+import { COLORS, spacing, typography } from '../../config/theme';
+import { fetchLecturers, createLecturer, updateLecturer, deleteLecturer } from '../../src/store/monitoringSlice'; 
 
 export default function PLLecturers({ navigation }) {
   const dispatch = useDispatch();

@@ -7,7 +7,7 @@ import { ScreenContainer, LoadingSpinner, AppModal, Input, Button, Card } from '
 import { CourseList, CourseHeader, CourseStats } from '../../src/components/Courses';
 import { COLORS, spacing, typography } from '../../src/config/theme';
 import { fetchCourses, createCourse, updateCourse, deleteCourse } from '../../src/store/courseSlice';
-import { fetchLecturers } from '../../src/store/monitoringslice';
+import { fetchLecturers } from '../../src/store/monitoringSlice';
 
 export default function PLCourses({ navigation }) {
   const dispatch = useDispatch();

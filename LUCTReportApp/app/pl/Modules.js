@@ -4,8 +4,8 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'rea
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer, LoadingSpinner, AppModal, Input, Button, Card } from '../../src/components/UI';
-import { COLORS, spacing, typography } from '../../src/config/theme';
-import { fetchModules, createModule, updateModule, deleteModule } from '../../src/store/monitoringslice';
+import { COLORS, spacing, typography } from '../../config/theme';
+import { fetchModules, createModule, updateModule, deleteModule } from '../../src/store/monitoringSlice'; // Fixed import
 import { fetchCourses } from '../../src/store/courseSlice';
 
 export default function PLModules({ navigation }) {
