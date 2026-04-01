@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer, LoadingSpinner, Card, Button, Input } from '../../src/components/UI';
 import { MarkAttendanceRow } from '../../src/components/Attendance';
-import { COLORS, spacing, typography } from '../../src/config/theme';
+import { COLORS, spacing, typography } from '../../config/theme';
 import { fetchCourses } from '../../src/store/courseSlice';
 import { markAttendance, fetchAttendanceByCourse } from '../../src/store/attendanceSlice';
 

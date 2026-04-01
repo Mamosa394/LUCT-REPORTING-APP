@@ -4,7 +4,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'rea
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer, LoadingSpinner, Card, Button } from '../../src/components/UI';
-import { COLORS, spacing, typography } from '../../src/config/theme';
+import { COLORS, spacing, typography } from '../../config/theme';
 import { fetchCourses } from '../../src/store/courseSlice';
 import { fetchAttendanceByCourse } from '../../src/store/attendanceSlice';
 

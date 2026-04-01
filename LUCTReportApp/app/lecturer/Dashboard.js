@@ -4,11 +4,11 @@ import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } 
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer, StatsCard, LoadingSpinner, Card } from '../../src/components/UI';
-import { COLORS, spacing, typography } from '../../src/config/theme';
-import { fetchDashboardStats } from '../../src/store/monitoringslice';
+import { COLORS, spacing, typography } from '../../config/theme';
+import { fetchDashboardStats } from '../../src/store/monitoringSlice';
 import { fetchCourses } from '../../src/store/courseSlice';
-import { fetchReports } from '../../src/store/monitoringslice';
-import { fetchRatings } from '../../src/store/monitoringslice';
+import { fetchReports } from '../../src/store/monitoringSlice';
+import { fetchRatings } from '../../src/store/monitoringSlice';
 
 export default function LecturerDashboard({ navigation }) {
   const dispatch = useDispatch();

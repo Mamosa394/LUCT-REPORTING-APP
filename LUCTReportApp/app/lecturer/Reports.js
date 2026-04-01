@@ -5,8 +5,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer, LoadingSpinner, AppModal, Input, Button, Card } from '../../src/components/UI';
 import { ReportList, ReportStats } from '../../src/components/Reports';
-import { COLORS, spacing, typography } from '../../src/config/theme';
-import { fetchReports, submitReport, updateReportStatus } from '../../src/store/monitoringslice';
+import { COLORS, spacing, typography } from '../../config/theme';
+import { fetchReports, submitReport, updateReportStatus } from '../../src/store/monitoringSlice';
 import { fetchCourses } from '../../src/store/courseSlice';
 
 export default function LecturerReports({ navigation }) {
