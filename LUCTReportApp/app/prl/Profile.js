@@ -4,7 +4,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer, LoadingSpinner, Input, Button, Card } from '../../src/components/UI';
-import { COLORS, spacing, typography } from '../../src/config/theme';
+import { COLORS, spacing, typography } from '../../config/theme';
 import { logout } from '../../src/store/authSlice';
 
 export default function PRLProfile({ navigation }) {

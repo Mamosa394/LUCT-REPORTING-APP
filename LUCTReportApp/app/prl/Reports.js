@@ -4,8 +4,8 @@ import { View, Text, StyleSheet, ScrollView, Dimensions } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { LineChart, BarChart } from 'react-native-chart-kit';
 import { ScreenContainer, LoadingSpinner, Card } from '../../src/components/UI';
-import { COLORS, spacing, typography } from '../../src/config/theme';
-import { fetchDashboardStats, fetchRatings } from '../../src/store/monitoringslice';
+import { COLORS, spacing, typography } from '../../config/theme';
+import { fetchDashboardStats, fetchRatings } from '../../src/store/monitoringSlice';
 import { fetchAttendanceSummary } from '../../src/store/attendanceSlice';
 
 const { width } = Dimensions.get('window');

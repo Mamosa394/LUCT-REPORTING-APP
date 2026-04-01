@@ -5,8 +5,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { LineChart, BarChart, PieChart } from 'react-native-chart-kit';
 import { ScreenContainer, LoadingSpinner, Card } from '../../src/components/UI';
-import { COLORS, spacing, typography, shadows } from '../../src/config/theme';
-import { fetchDashboardStats, fetchRatings, fetchReports } from '../../src/store/monitoringslice';
+import { COLORS, spacing, typography, shadows } from '../../config/theme';
+import { fetchDashboardStats, fetchRatings, fetchReports } from '../../src/store/monitoringSlice';
 import { fetchCourses } from '../../src/store/courseSlice';
 import { fetchAttendanceByCourse } from '../../src/store/attendanceSlice';
 

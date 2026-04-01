@@ -5,9 +5,9 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer, LoadingSpinner, AppModal, Input, Button, Card } from '../../src/components/UI';
 import { CourseList, CourseHeader, CourseStats } from '../../src/components/Courses';
-import { COLORS, spacing, typography } from '../../src/config/theme';
+import { COLORS, spacing, typography } from '../../config/theme';
 import { fetchCourses, createCourse, updateCourse, deleteCourse } from '../../src/store/courseSlice';
-import { fetchLecturers } from '../../src/store/monitoringslice';
+import { fetchLecturers } from '../../src/store/monitoringSlice';
 
 export default function PRLCourses({ navigation }) {
   const dispatch = useDispatch();
