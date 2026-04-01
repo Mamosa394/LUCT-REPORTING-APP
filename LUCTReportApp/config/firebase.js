@@ -5,17 +5,14 @@ import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getMessaging, isSupported } from 'firebase/messaging';
 
-// PASTE YOUR FIREBASE CONFIGURATION HERE
-// Go to Firebase Console > Project Settings > General > Your apps
-// Copy the firebaseConfig object and paste it below
+// Firebase configuration from your Android client JSON
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
+  apiKey: "AIzaSyDrv_30LrrF5RfJrforMXJZzAeYEMR8Mfg",
+  authDomain: "luct-reporting-database.firebaseapp.com",
   projectId: "luct-reporting-database",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID",
-  measurementId: "YOUR_MEASUREMENT_ID" // Optional, for analytics
+  storageBucket: "luct-reporting-database.firebasestorage.app",
+  messagingSenderId: "612676312585",
+  appId: "1:612676312585:android:ff638b819b70950285e2d8",
 };
 
 // Initialize Firebase app

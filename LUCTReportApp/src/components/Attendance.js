@@ -1,26 +1,26 @@
+// src/components/Attendance.js
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Calendar } from 'react-native-calendars';
-import { COLORS } from '../../styles/colors';
-import { SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../../styles/typography';
-import { formatCalendarDate } from '../../utils/formatters/dateFormatter';
+import { COLORS } from '../config/theme';
+import { spacing, typography, shadows } from '../config/theme';
 
-// ─── Attendance Calendar ──────────────────────────────────────────────────────
+// Attendance Calendar
 export function AttendanceCalendar({ records, onDayPress }) {
   const markedDates = useMemo(() => {
     const marks = {};
     records.forEach((r) => {
-      const dateStr = formatCalendarDate(r.date);
+      const dateStr = r.date?.split('T')[0];
       const colorMap = {
-        present: COLORS.present,
-        absent: COLORS.absent,
-        late: COLORS.late,
-        excused: COLORS.excused,
+        present: COLORS.success,
+        absent: COLORS.error,
+        late: COLORS.warning,
+        excused: COLORS.info,
       };
       marks[dateStr] = {
         selected: true,
-        selectedColor: colorMap[r.status] || COLORS.gray400,
-        dotColor: colorMap[r.status],
+        selectedColor: colorMap[r.status] || COLORS.primary,
+        dotColor: colorMap[r.status] || COLORS.primary,
         marked: true,
       };
     });
@@ -32,31 +32,34 @@ export function AttendanceCalendar({ records, onDayPress }) {
       markedDates={markedDates}
       onDayPress={onDayPress}
       theme={{
-        backgroundColor: COLORS.white,
-        calendarBackground: COLORS.white,
+        backgroundColor: COLORS.cardBackground,
+        calendarBackground: COLORS.cardBackground,
         textSectionTitleColor: COLORS.textSecondary,
         selectedDayBackgroundColor: COLORS.primary,
-        selectedDayTextColor: COLORS.white,
+        selectedDayTextColor: COLORS.buttonPrimaryText,
         todayTextColor: COLORS.primary,
         dayTextColor: COLORS.text,
-        textDisabledColor: COLORS.textLight,
+        textDisabledColor: COLORS.textDisabled,
         dotColor: COLORS.primary,
         monthTextColor: COLORS.text,
         indicatorColor: COLORS.primary,
         arrowColor: COLORS.primary,
+        textDayFontSize: 14,
+        textMonthFontSize: 16,
+        textDayHeaderFontSize: 12,
       }}
       style={styles.calendar}
     />
   );
 }
 
-// ─── Attendance Legend ────────────────────────────────────────────────────────
+// Attendance Legend
 export function AttendanceLegend() {
   const items = [
-    { label: 'Present', color: COLORS.present },
-    { label: 'Absent', color: COLORS.absent },
-    { label: 'Late', color: COLORS.late },
-    { label: 'Excused', color: COLORS.excused },
+    { label: 'Present', color: COLORS.success },
+    { label: 'Absent', color: COLORS.error },
+    { label: 'Late', color: COLORS.warning },
+    { label: 'Excused', color: COLORS.info },
   ];
   return (
     <View style={styles.legend}>
@@ -70,9 +73,9 @@ export function AttendanceLegend() {
   );
 }
 
-// ─── Attendance Summary Card ──────────────────────────────────────────────────
+// Attendance Summary Card
 export function AttendanceSummaryCard({ summary }) {
-  const { total, present, absent, late, excused, percentage } = summary;
+  const { total = 0, present = 0, absent = 0, late = 0, excused = 0, percentage = 0 } = summary;
 
   const getPercentageColor = () => {
     if (percentage >= 75) return COLORS.success;
@@ -83,14 +86,16 @@ export function AttendanceSummaryCard({ summary }) {
   return (
     <View style={styles.summaryCard}>
       <View style={styles.percentageCircle}>
-        <Text style={[styles.percentageText, { color: getPercentageColor() }]}>{percentage}%</Text>
+        <Text style={[styles.percentageText, { color: getPercentageColor() }]}>
+          {Math.round(percentage)}%
+        </Text>
         <Text style={styles.percentageLabel}>Attendance</Text>
       </View>
       <View style={styles.statsGrid}>
         <StatItem label="Total" value={total} color={COLORS.primary} />
-        <StatItem label="Present" value={present} color={COLORS.present} />
-        <StatItem label="Absent" value={absent} color={COLORS.absent} />
-        <StatItem label="Late" value={late} color={COLORS.late} />
+        <StatItem label="Present" value={present} color={COLORS.success} />
+        <StatItem label="Absent" value={absent} color={COLORS.error} />
+        <StatItem label="Late" value={late} color={COLORS.warning} />
       </View>
     </View>
   );
@@ -105,115 +110,175 @@ function StatItem({ label, value, color }) {
   );
 }
 
-// ─── Mark Attendance Row ──────────────────────────────────────────────────────
+// Mark Attendance Row
 export function MarkAttendanceRow({ student, status, onStatusChange }) {
   const statuses = ['present', 'absent', 'late', 'excused'];
   const colorMap = {
-    present: COLORS.present,
-    absent: COLORS.absent,
-    late: COLORS.late,
-    excused: COLORS.excused,
+    present: COLORS.success,
+    absent: COLORS.error,
+    late: COLORS.warning,
+    excused: COLORS.info,
   };
 
   return (
     <View style={styles.attendanceRow}>
       <View style={styles.studentInfo}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{student.fullName?.charAt(0).toUpperCase()}</Text>
+          <Text style={styles.avatarText}>{student.name?.charAt(0).toUpperCase() || '?'}</Text>
         </View>
         <View>
-          <Text style={styles.studentName}>{student.fullName}</Text>
-          <Text style={styles.studentId}>{student.studentId || student.uid}</Text>
+          <Text style={styles.studentName}>{student.name || student.fullName}</Text>
+          <Text style={styles.studentId}>{student.studentId || student.id}</Text>
         </View>
       </View>
       <View style={styles.statusButtons}>
         {statuses.map((s) => (
-          <TouchableButton
+          <TouchableOpacity
             key={s}
-            label={s.charAt(0).toUpperCase()}
-            isSelected={status === s}
-            color={colorMap[s]}
             onPress={() => onStatusChange(s)}
-          />
+            style={[
+              styles.statusBtn,
+              status === s && { backgroundColor: colorMap[s] }
+            ]}
+          >
+            <Text style={[
+              styles.statusBtnText,
+              status === s && { color: COLORS.buttonPrimaryText }
+            ]}>
+              {s.charAt(0).toUpperCase()}
+            </Text>
+          </TouchableOpacity>
         ))}
       </View>
     </View>
   );
 }
 
-function TouchableButton({ label, isSelected, color, onPress }) {
-  const { TouchableOpacity } = require('react-native');
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      style={[styles.statusBtn, isSelected && { backgroundColor: color }]}
-    >
-      <Text style={[styles.statusBtnText, isSelected && { color: COLORS.white }]}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
-
 const styles = StyleSheet.create({
-  calendar: { borderRadius: BORDER_RADIUS.lg, ...SHADOWS.sm, marginBottom: SPACING.md },
-  legend: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: SPACING.sm },
-  legendItem: { flexDirection: 'row', alignItems: 'center' },
-  legendDot: { width: 10, height: 10, borderRadius: 5, marginRight: SPACING.xs },
-  legendLabel: { ...TYPOGRAPHY.caption },
+  calendar: { 
+    borderRadius: 12, 
+    ...shadows.small, 
+    marginBottom: spacing.md,
+    backgroundColor: COLORS.cardBackground,
+  },
+  legend: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-around', 
+    paddingVertical: spacing.sm,
+    backgroundColor: COLORS.background,
+  },
+  legendItem: { 
+    flexDirection: 'row', 
+    alignItems: 'center' 
+  },
+  legendDot: { 
+    width: 10, 
+    height: 10, 
+    borderRadius: 5, 
+    marginRight: spacing.xs 
+  },
+  legendLabel: { 
+    ...typography.caption,
+    color: COLORS.textSecondary,
+  },
   summaryCard: {
     flexDirection: 'row',
-    backgroundColor: COLORS.white,
-    borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.md,
-    ...SHADOWS.md,
-    marginBottom: SPACING.md,
+    backgroundColor: COLORS.cardBackground,
+    borderRadius: 12,
+    padding: spacing.md,
+    ...shadows.medium,
+    marginBottom: spacing.md,
     alignItems: 'center',
   },
   percentageCircle: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    borderWidth: 4,
-    borderColor: COLORS.primaryLight,
+    borderWidth: 3,
+    borderColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: SPACING.lg,
+    marginRight: spacing.lg,
   },
-  percentageText: { fontSize: 20, fontWeight: '800' },
-  percentageLabel: { ...TYPOGRAPHY.caption },
-  statsGrid: { flex: 1, flexDirection: 'row', flexWrap: 'wrap' },
-  statItem: { width: '50%', alignItems: 'center', marginBottom: SPACING.sm },
-  statValue: { fontSize: 22, fontWeight: '700' },
-  statLabel: { ...TYPOGRAPHY.caption },
+  percentageText: { 
+    fontSize: 20, 
+    fontWeight: '800' 
+  },
+  percentageLabel: { 
+    ...typography.caption,
+    color: COLORS.textSecondary,
+  },
+  statsGrid: { 
+    flex: 1, 
+    flexDirection: 'row', 
+    flexWrap: 'wrap' 
+  },
+  statItem: { 
+    width: '50%', 
+    alignItems: 'center', 
+    marginBottom: spacing.sm 
+  },
+  statValue: { 
+    fontSize: 22, 
+    fontWeight: '700' 
+  },
+  statLabel: { 
+    ...typography.caption,
+    color: COLORS.textSecondary,
+  },
   attendanceRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: SPACING.sm,
+    paddingVertical: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray100,
+    borderBottomColor: COLORS.border,
   },
-  studentInfo: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  studentInfo: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    flex: 1 
+  },
   avatar: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: COLORS.primaryLight,
+    backgroundColor: COLORS.surfaceLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: SPACING.sm,
+    marginRight: spacing.sm,
   },
-  avatarText: { color: COLORS.primary, fontWeight: '700', fontSize: 16 },
-  studentName: { ...TYPOGRAPHY.body2, fontWeight: '600' },
-  studentId: { ...TYPOGRAPHY.caption },
-  statusButtons: { flexDirection: 'row' },
+  avatarText: { 
+    color: COLORS.primary, 
+    fontWeight: '700', 
+    fontSize: 16 
+  },
+  studentName: { 
+    ...typography.body,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  studentId: { 
+    ...typography.caption,
+    color: COLORS.textSecondary,
+  },
+  statusButtons: { 
+    flexDirection: 'row' 
+  },
   statusBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: COLORS.gray200,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.surfaceLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 4,
+    marginLeft: 6,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
-  statusBtnText: { fontSize: 11, fontWeight: '700', color: COLORS.gray600 },
+  statusBtnText: { 
+    fontSize: 12, 
+    fontWeight: '700', 
+    color: COLORS.textSecondary 
+  },
 });

@@ -1,3 +1,4 @@
+// app/auth/RegisterScreen.js
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
@@ -5,150 +6,219 @@ import {
 } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useDispatch } from 'react-redux';
-import { useRouter } from 'expo-router';
-import { register, clearError, clearSuccessMessage } from '../../src/store/slices/authSlice';
-import { useAuth } from '../../src/utils/hooks/useAuth';
-import { registerSchema } from '../../src/utils/validators/validators';
-import Input from '../../src/components/common/Input';
-import Button from '../../src/components/common/Button';
-import { COLORS } from '../../src/styles/colors';
-import { SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../../src/styles/typography';
-import { ROLE_LABELS, DEPARTMENTS } from '../../src/utils/constants/roles';
+import { useDispatch, useSelector } from 'react-redux';
+import { Ionicons } from '@expo/vector-icons';
+import { register, clearError } from '../../src/store/authSlice';
+import { registerSchema } from '../../src/utils/validators';
+import { Input, Button } from '../../src/components/UI';
+import { COLORS, spacing, typography } from '../../config/theme';
 
-const ROLES = ['student', 'lecturer', 'prl', 'pl'];
+const ROLES = ['student', 'lecturer'];
 
-export default function RegisterScreen() {
+export default function RegisterScreen({ navigation }) {
   const dispatch = useDispatch();
-  const router = useRouter();
-  const { isLoading, error, successMessage } = useAuth();
+  const { isLoading, error } = useSelector(state => state.auth);
   const [selectedRole, setSelectedRole] = useState('student');
 
-  const { control, handleSubmit, watch, setValue, formState: { errors } } = useForm({
+  const { control, handleSubmit, setValue, formState: { errors } } = useForm({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      fullName: '', email: '', password: '', confirmPassword: '',
+      name: '', email: '', password: '', confirmPassword: '',
       role: 'student', department: '', studentId: '', employeeId: '',
-      program: '', stream: '',
     },
   });
 
   useEffect(() => {
-    if (error) Alert.alert('Registration Failed', error, [{ text: 'OK', onPress: () => dispatch(clearError()) }]);
-  }, [error]);
-
-  useEffect(() => {
-    if (successMessage) {
-      Alert.alert('Success!', successMessage, [
-        { text: 'Go to Login', onPress: () => { dispatch(clearSuccessMessage()); router.replace('/(auth)/login'); } },
+    if (error) {
+      Alert.alert('Registration Failed', error, [
+        { text: 'OK', onPress: () => dispatch(clearError()) },
       ]);
     }
-  }, [successMessage]);
+  }, [error, dispatch]);
 
   const handleRoleSelect = (role) => {
     setSelectedRole(role);
     setValue('role', role);
   };
 
-  const onSubmit = (data) => dispatch(register(data));
+  const onSubmit = async (data) => {
+    try {
+      await dispatch(register(data)).unwrap();
+      Alert.alert('Success!', 'Account created successfully. Please login.', [
+        { text: 'Go to Login', onPress: () => navigation.navigate('Login') },
+      ]);
+    } catch (err) {
+      // Error is handled by the useEffect above
+    }
+  };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Text style={styles.backText}>← Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Create Account</Text>
-        </View>
+    <KeyboardAvoidingView 
+      style={styles.container} 
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent} 
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={24} color={COLORS.primary} />
+          <Text style={styles.backText}>Back to Login</Text>
+        </TouchableOpacity>
 
         <View style={styles.card}>
+          <Text style={styles.title}>Create Account</Text>
+          <Text style={styles.subtitle}>Join the LUCT Reporting System</Text>
+
           {/* Role Selection */}
           <Text style={styles.sectionLabel}>Select Your Role</Text>
-          <View style={styles.rolesGrid}>
+          <View style={styles.rolesContainer}>
             {ROLES.map((role) => (
               <TouchableOpacity
                 key={role}
-                style={[styles.roleChip, selectedRole === role && styles.roleChipActive]}
+                style={[
+                  styles.roleChip,
+                  selectedRole === role && styles.roleChipActive,
+                ]}
                 onPress={() => handleRoleSelect(role)}
               >
-                <Text style={[styles.roleChipText, selectedRole === role && styles.roleChipTextActive]}>
-                  {ROLE_LABELS[role]}
+                <Text style={[
+                  styles.roleChipText,
+                  selectedRole === role && styles.roleChipTextActive,
+                ]}>
+                  {role === 'student' ? 'Student' : 'Lecturer'}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          <Controller control={control} name="fullName"
+          <Controller
+            control={control}
+            name="name"
             render={({ field: { onChange, value } }) => (
-              <Input label="Full Name" value={value} onChangeText={onChange}
-                placeholder="John Doe" error={errors.fullName?.message} autoCapitalize="words" />
-            )} />
+              <Input
+                label="Full Name"
+                value={value}
+                onChangeText={onChange}
+                placeholder="Enter your full name"
+                error={errors.name?.message}
+                leftIcon={<Ionicons name="person-outline" size={20} color={COLORS.textSecondary} />}
+              />
+            )}
+          />
 
-          <Controller control={control} name="email"
+          <Controller
+            control={control}
+            name="email"
             render={({ field: { onChange, value } }) => (
-              <Input label="Email Address" value={value} onChangeText={onChange}
-                placeholder="you@university.edu" keyboardType="email-address" error={errors.email?.message} />
-            )} />
+              <Input
+                label="Email Address"
+                value={value}
+                onChangeText={onChange}
+                placeholder="you@luct.edu"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                error={errors.email?.message}
+                leftIcon={<Ionicons name="mail-outline" size={20} color={COLORS.textSecondary} />}
+              />
+            )}
+          />
 
-          <Controller control={control} name="password"
+          <Controller
+            control={control}
+            name="password"
             render={({ field: { onChange, value } }) => (
-              <Input label="Password" value={value} onChangeText={onChange}
-                placeholder="Min. 8 chars, uppercase, number, special" secureTextEntry error={errors.password?.message} />
-            )} />
+              <Input
+                label="Password"
+                value={value}
+                onChangeText={onChange}
+                placeholder="Create a password (min. 6 characters)"
+                secureTextEntry
+                error={errors.password?.message}
+                leftIcon={<Ionicons name="lock-closed-outline" size={20} color={COLORS.textSecondary} />}
+              />
+            )}
+          />
 
-          <Controller control={control} name="confirmPassword"
+          <Controller
+            control={control}
+            name="confirmPassword"
             render={({ field: { onChange, value } }) => (
-              <Input label="Confirm Password" value={value} onChangeText={onChange}
-                placeholder="Re-enter password" secureTextEntry error={errors.confirmPassword?.message} />
-            )} />
+              <Input
+                label="Confirm Password"
+                value={value}
+                onChangeText={onChange}
+                placeholder="Confirm your password"
+                secureTextEntry
+                error={errors.confirmPassword?.message}
+                leftIcon={<Ionicons name="lock-closed-outline" size={20} color={COLORS.textSecondary} />}
+              />
+            )}
+          />
 
-          <Controller control={control} name="department"
+          <Controller
+            control={control}
+            name="department"
             render={({ field: { onChange, value } }) => (
-              <Input label="Department" value={value} onChangeText={onChange}
-                placeholder="e.g. Computer Science" error={errors.department?.message} autoCapitalize="words" />
-            )} />
+              <Input
+                label="Department"
+                value={value}
+                onChangeText={onChange}
+                placeholder="e.g., Computer Science"
+                error={errors.department?.message}
+                leftIcon={<Ionicons name="business-outline" size={20} color={COLORS.textSecondary} />}
+              />
+            )}
+          />
 
           {selectedRole === 'student' && (
-            <>
-              <Controller control={control} name="studentId"
-                render={({ field: { onChange, value } }) => (
-                  <Input label="Student ID" value={value} onChangeText={onChange} placeholder="e.g. STU2024001" />
-                )} />
-              <Controller control={control} name="program"
-                render={({ field: { onChange, value } }) => (
-                  <Input label="Program" value={value} onChangeText={onChange} placeholder="e.g. BSc Computer Science" autoCapitalize="words" />
-                )} />
-            </>
-          )}
-
-          {['lecturer', 'prl'].includes(selectedRole) && (
-            <>
-              <Controller control={control} name="employeeId"
-                render={({ field: { onChange, value } }) => (
-                  <Input label="Employee ID" value={value} onChangeText={onChange} placeholder="e.g. EMP2024001" />
-                )} />
-              <Controller control={control} name="stream"
-                render={({ field: { onChange, value } }) => (
-                  <Input label="Stream / Specialization" value={value} onChangeText={onChange} placeholder="e.g. Software Engineering" autoCapitalize="words" />
-                )} />
-            </>
-          )}
-
-          {selectedRole === 'pl' && (
-            <Controller control={control} name="employeeId"
+            <Controller
+              control={control}
+              name="studentId"
               render={({ field: { onChange, value } }) => (
-                <Input label="Employee ID" value={value} onChangeText={onChange} placeholder="e.g. EMP2024001" />
-              )} />
+                <Input
+                  label="Student ID"
+                  value={value}
+                  onChangeText={onChange}
+                  placeholder="e.g., CS123456"
+                  error={errors.studentId?.message}
+                  leftIcon={<Ionicons name="card-outline" size={20} color={COLORS.textSecondary} />}
+                />
+              )}
+            />
           )}
 
-          <Button title="Create Account" onPress={handleSubmit(onSubmit)}
-            loading={isLoading} fullWidth size="lg" style={{ marginTop: SPACING.md }} />
+          {selectedRole === 'lecturer' && (
+            <Controller
+              control={control}
+              name="employeeId"
+              render={({ field: { onChange, value } }) => (
+                <Input
+                  label="Employee ID"
+                  value={value}
+                  onChangeText={onChange}
+                  placeholder="e.g., LCT00123"
+                  error={errors.employeeId?.message}
+                  leftIcon={<Ionicons name="badge-outline" size={20} color={COLORS.textSecondary} />}
+                />
+              )}
+            />
+          )}
+
+          <Button
+            title="Create Account"
+            onPress={handleSubmit(onSubmit)}
+            loading={isLoading}
+            fullWidth
+            size="lg"
+            style={styles.registerButton}
+          />
         </View>
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Already have an account? </Text>
-          <TouchableOpacity onPress={() => router.replace('/(auth)/login')}>
+          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
             <Text style={styles.footerLink}>Sign In</Text>
           </TouchableOpacity>
         </View>
@@ -158,22 +228,88 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, backgroundColor: COLORS.primary, padding: SPACING.lg, paddingBottom: SPACING.xl },
-  headerRow: { flexDirection: 'row', alignItems: 'center', paddingTop: SPACING.xl, marginBottom: SPACING.lg },
-  backBtn: { marginRight: SPACING.md },
-  backText: { color: COLORS.white, fontSize: 16 },
-  headerTitle: { ...TYPOGRAPHY.h4, color: COLORS.white },
-  card: { backgroundColor: COLORS.white, borderRadius: BORDER_RADIUS.xxl, padding: SPACING.xl },
-  sectionLabel: { ...TYPOGRAPHY.label, marginBottom: SPACING.sm },
-  rolesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm, marginBottom: SPACING.lg },
-  roleChip: {
-    paddingHorizontal: SPACING.md, paddingVertical: SPACING.xs,
-    borderRadius: BORDER_RADIUS.full, borderWidth: 1.5, borderColor: COLORS.border,
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
   },
-  roleChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  roleChipText: { ...TYPOGRAPHY.body2, color: COLORS.textSecondary },
-  roleChipTextActive: { color: COLORS.white, fontWeight: '600' },
-  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: SPACING.xl },
-  footerText: { color: 'rgba(255,255,255,0.8)', fontSize: 15 },
-  footerLink: { color: COLORS.white, fontSize: 15, fontWeight: '700' },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xl,
+  },
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.xl,
+    marginBottom: spacing.lg,
+  },
+  backText: {
+    ...typography.body,
+    color: COLORS.primary,
+    marginLeft: spacing.xs,
+  },
+  card: {
+    backgroundColor: COLORS.cardBackground,
+    borderRadius: 20,
+    padding: spacing.xl,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  title: {
+    ...typography.h2,
+    color: COLORS.text,
+    marginBottom: spacing.xs,
+  },
+  subtitle: {
+    ...typography.body,
+    color: COLORS.textSecondary,
+    marginBottom: spacing.lg,
+  },
+  sectionLabel: {
+    ...typography.body,
+    color: COLORS.textSecondary,
+    marginBottom: spacing.sm,
+  },
+  rolesContainer: {
+    flexDirection: 'row',
+    marginBottom: spacing.lg,
+  },
+  roleChip: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: 8,
+    backgroundColor: COLORS.surfaceLight,
+    marginRight: spacing.sm,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  roleChipActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  roleChipText: {
+    ...typography.bodySmall,
+    color: COLORS.textSecondary,
+  },
+  roleChipTextActive: {
+    color: COLORS.buttonPrimaryText,
+    fontWeight: '600',
+  },
+  registerButton: {
+    marginTop: spacing.md,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: spacing.xl,
+  },
+  footerText: {
+    ...typography.body,
+    color: COLORS.textSecondary,
+  },
+  footerLink: {
+    ...typography.body,
+    color: COLORS.primary,
+    fontWeight: '700',
+  },
 });

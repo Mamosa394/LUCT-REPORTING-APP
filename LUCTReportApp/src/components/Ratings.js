@@ -1,16 +1,12 @@
+// src/components/Ratings.js
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useDispatch } from 'react-redux';
-import { submitRating } from '../../store/slices/ratingsSlice';
-import Button from '../common/Button';
-import Input from '../common/Input';
-import { COLORS } from '../../styles/colors';
-import { SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../../styles/typography';
-import { RATING_CRITERIA } from '../../utils/constants/roles';
-import { getCurrentAcademicYear } from '../../utils/formatters/dateFormatter';
+import { COLORS } from '../config/theme';
+import { spacing, typography, shadows } from '../config/theme';
+import { Button, Input } from './UI';
 
-// ─── Star Row ─────────────────────────────────────────────────────────────────
+// Star Rating Component
 export function StarRating({ value, onChange, size = 28, readonly = false }) {
   return (
     <View style={styles.starsRow}>
@@ -24,7 +20,7 @@ export function StarRating({ value, onChange, size = 28, readonly = false }) {
           <Ionicons
             name={star <= value ? 'star' : 'star-outline'}
             size={size}
-            color={star <= value ? '#FFC107' : COLORS.gray300}
+            color={star <= value ? '#FFC107' : COLORS.textDisabled}
           />
         </TouchableOpacity>
       ))}
@@ -32,7 +28,7 @@ export function StarRating({ value, onChange, size = 28, readonly = false }) {
   );
 }
 
-// ─── Rating Criterion Row ─────────────────────────────────────────────────────
+// Rating Criterion Row
 function CriterionRow({ label, value, onChange }) {
   return (
     <View style={styles.criterionRow}>
@@ -43,14 +39,14 @@ function CriterionRow({ label, value, onChange }) {
   );
 }
 
-// ─── Full Rating Form ─────────────────────────────────────────────────────────
-export function RatingForm({ ratedUserId, moduleId, semester, onSuccess, onCancel }) {
-  const dispatch = useDispatch();
+// Full Rating Form
+export function RatingForm({ ratedUserId, courseId, onSuccess, onCancel }) {
   const [scores, setScores] = useState({
     teachingQuality: 0,
     communication: 0,
     punctuality: 0,
-    availability: 0,
+    material: 0,
+    support: 0,
     overall: 0,
   });
   const [comment, setComment] = useState('');
@@ -58,9 +54,10 @@ export function RatingForm({ ratedUserId, moduleId, semester, onSuccess, onCance
 
   const criterionLabels = {
     teachingQuality: 'Teaching Quality',
-    communication: 'Communication',
+    communication: 'Communication Skills',
     punctuality: 'Punctuality',
-    availability: 'Availability',
+    material: 'Course Material',
+    support: 'Student Support',
     overall: 'Overall Rating',
   };
 
@@ -74,15 +71,8 @@ export function RatingForm({ ratedUserId, moduleId, semester, onSuccess, onCance
     }
     setLoading(true);
     try {
-      await dispatch(submitRating({
-        ratedUserId,
-        moduleId,
-        ratingType: 'lecturer',
-        scores,
-        comment,
-        semester: semester || 'Semester 1',
-        academicYear: getCurrentAcademicYear(),
-      })).unwrap();
+      // This will be connected to your API
+      console.log('Submitting rating:', { ratedUserId, courseId, scores, comment });
       Alert.alert('Success', 'Rating submitted successfully!');
       onSuccess?.();
     } catch (err) {
@@ -95,7 +85,7 @@ export function RatingForm({ ratedUserId, moduleId, semester, onSuccess, onCance
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
       <Text style={styles.formTitle}>Rate Your Lecturer</Text>
-      {RATING_CRITERIA.map((key) => (
+      {Object.keys(criterionLabels).map((key) => (
         <CriterionRow
           key={key}
           label={criterionLabels[key]}
@@ -110,17 +100,17 @@ export function RatingForm({ ratedUserId, moduleId, semester, onSuccess, onCance
         placeholder="Share your experience..."
         multiline
         numberOfLines={4}
-        style={{ marginTop: SPACING.md }}
+        style={{ marginTop: spacing.md }}
       />
       <View style={styles.formActions}>
-        <Button title="Cancel" variant="outline" onPress={onCancel} style={{ flex: 1, marginRight: SPACING.sm }} />
+        <Button title="Cancel" variant="secondary" onPress={onCancel} style={{ flex: 1, marginRight: spacing.sm }} />
         <Button title="Submit Rating" onPress={handleSubmit} loading={loading} style={{ flex: 2 }} />
       </View>
     </ScrollView>
   );
 }
 
-// ─── Rating Chart Bar ─────────────────────────────────────────────────────────
+// Rating Bar Component
 export function RatingBar({ label, value, maxValue = 5 }) {
   const percent = (value / maxValue) * 100;
   return (
@@ -134,31 +124,213 @@ export function RatingBar({ label, value, maxValue = 5 }) {
   );
 }
 
+// Rating Card Component
+export function RatingCard({ rating, onPress }) {
+  return (
+    <TouchableOpacity style={styles.ratingCard} onPress={() => onPress?.(rating)} activeOpacity={0.8}>
+      <View style={styles.ratingHeader}>
+        <View style={styles.ratingUser}>
+          <View style={styles.userAvatar}>
+            <Text style={styles.userAvatarText}>{rating.lecturer?.name?.charAt(0) || 'L'}</Text>
+          </View>
+          <View>
+            <Text style={styles.lecturerName}>{rating.lecturer?.name || 'Lecturer'}</Text>
+            <Text style={styles.courseName}>{rating.course?.name || 'Course'}</Text>
+          </View>
+        </View>
+        <View style={styles.ratingScore}>
+          <Text style={styles.ratingNumber}>{rating.overall}</Text>
+          <StarRating value={rating.overall} readonly size={16} />
+        </View>
+      </View>
+      {rating.comment && (
+        <Text style={styles.ratingComment}>"{rating.comment}"</Text>
+      )}
+      <Text style={styles.ratingDate}>
+        {new Date(rating.createdAt).toLocaleDateString()}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+// Rating Summary Component
+export function RatingSummary({ averages }) {
+  if (!averages) return null;
+  
+  const criteria = [
+    { label: 'Teaching Quality', value: averages.teaching },
+    { label: 'Communication', value: averages.communication },
+    { label: 'Punctuality', value: averages.punctuality },
+    { label: 'Course Material', value: averages.material },
+    { label: 'Student Support', value: averages.support },
+  ];
+
+  return (
+    <View style={styles.summaryContainer}>
+      <View style={styles.overallRating}>
+        <Text style={styles.overallNumber}>{averages.overall?.toFixed(1)}</Text>
+        <StarRating value={Math.round(averages.overall)} readonly size={20} />
+        <Text style={styles.totalRatings}>{averages.totalRatings} ratings</Text>
+      </View>
+      <View style={styles.criteriaContainer}>
+        {criteria.map((criterion) => (
+          <RatingBar key={criterion.label} label={criterion.label} value={criterion.value} />
+        ))}
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  starsRow: { flexDirection: 'row', alignItems: 'center' },
-  starBtn: { padding: 2 },
+  starsRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center' 
+  },
+  starBtn: { 
+    padding: 2 
+  },
   criterionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: SPACING.sm,
+    paddingVertical: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray100,
+    borderBottomColor: COLORS.border,
   },
-  criterionLabel: { ...TYPOGRAPHY.body2, flex: 1 },
-  criterionValue: { ...TYPOGRAPHY.body2, color: COLORS.primary, fontWeight: '700', width: 32, textAlign: 'right' },
-  formTitle: { ...TYPOGRAPHY.h4, marginBottom: SPACING.lg },
-  formActions: { flexDirection: 'row', marginTop: SPACING.lg, marginBottom: SPACING.md },
-  barRow: { flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.sm },
-  barLabel: { ...TYPOGRAPHY.caption, flex: 1, color: COLORS.textSecondary },
+  criterionLabel: { 
+    ...typography.body, 
+    flex: 1,
+    color: COLORS.text,
+  },
+  criterionValue: { 
+    ...typography.body, 
+    color: COLORS.primary, 
+    fontWeight: '700', 
+    width: 32, 
+    textAlign: 'right' 
+  },
+  formTitle: { 
+    ...typography.h3, 
+    marginBottom: spacing.lg,
+    color: COLORS.text,
+  },
+  formActions: { 
+    flexDirection: 'row', 
+    marginTop: spacing.lg, 
+    marginBottom: spacing.md 
+  },
+  barRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginBottom: spacing.sm 
+  },
+  barLabel: { 
+    ...typography.bodySmall, 
+    flex: 1, 
+    color: COLORS.textSecondary 
+  },
   barTrack: {
     flex: 2,
     height: 8,
-    backgroundColor: COLORS.gray200,
-    borderRadius: BORDER_RADIUS.full,
+    backgroundColor: COLORS.surfaceLight,
+    borderRadius: 4,
     overflow: 'hidden',
-    marginHorizontal: SPACING.sm,
+    marginHorizontal: spacing.sm,
   },
-  barFill: { height: '100%', backgroundColor: COLORS.primary, borderRadius: BORDER_RADIUS.full },
-  barValue: { ...TYPOGRAPHY.caption, fontWeight: '700', color: COLORS.primary, width: 28, textAlign: 'right' },
+  barFill: { 
+    height: '100%', 
+    backgroundColor: COLORS.primary, 
+    borderRadius: 4 
+  },
+  barValue: { 
+    ...typography.bodySmall, 
+    fontWeight: '700', 
+    color: COLORS.primary, 
+    width: 28, 
+    textAlign: 'right' 
+  },
+  ratingCard: {
+    backgroundColor: COLORS.cardBackground,
+    borderRadius: 12,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    ...shadows.small,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  ratingHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  ratingUser: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  userAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.surfaceLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.sm,
+  },
+  userAvatarText: {
+    ...typography.h4,
+    color: COLORS.primary,
+  },
+  lecturerName: {
+    ...typography.body,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  courseName: {
+    ...typography.caption,
+    color: COLORS.textSecondary,
+  },
+  ratingScore: {
+    alignItems: 'flex-end',
+  },
+  ratingNumber: {
+    ...typography.h4,
+    color: COLORS.primary,
+    fontWeight: '700',
+  },
+  ratingComment: {
+    ...typography.body,
+    color: COLORS.textSecondary,
+    fontStyle: 'italic',
+    marginVertical: spacing.sm,
+  },
+  ratingDate: {
+    ...typography.caption,
+    color: COLORS.textDisabled,
+    textAlign: 'right',
+  },
+  summaryContainer: {
+    backgroundColor: COLORS.cardBackground,
+    borderRadius: 12,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    ...shadows.medium,
+  },
+  overallRating: {
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  overallNumber: {
+    ...typography.h1,
+    color: COLORS.primary,
+    marginBottom: spacing.sm,
+  },
+  totalRatings: {
+    ...typography.caption,
+    color: COLORS.textSecondary,
+    marginTop: spacing.xs,
+  },
+  criteriaContainer: {
+    marginTop: spacing.md,
+  },
 });

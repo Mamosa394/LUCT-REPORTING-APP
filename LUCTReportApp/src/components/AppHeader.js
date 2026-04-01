@@ -1,23 +1,24 @@
+// src/components/AppHeader.js
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector } from 'react-redux';
-import { COLORS } from '../../styles/colors';
-import { SPACING, TYPOGRAPHY, SHADOWS } from '../../styles/typography';
+import { COLORS } from '../config/theme';
+import { spacing, typography, shadows } from '../config/theme';
 
 export default function AppHeader({ title, navigation, showBack = false, showNotifications = true, showSearch = false, onSearch }) {
-  const { unreadCount } = useSelector((s) => s.notifications);
+  const { unreadCount } = useSelector((s) => s.notifications || { unreadCount: 0 });
 
   return (
     <View style={styles.header}>
       <View style={styles.left}>
         {showBack ? (
           <TouchableOpacity onPress={() => navigation?.goBack()} style={styles.iconBtn}>
-            <Ionicons name="arrow-back" size={24} color={COLORS.white} />
+            <Ionicons name="arrow-back" size={24} color={COLORS.text} />
           </TouchableOpacity>
         ) : (
           <TouchableOpacity onPress={() => navigation?.openDrawer?.()} style={styles.iconBtn}>
-            <Ionicons name="menu" size={26} color={COLORS.white} />
+            <Ionicons name="menu" size={26} color={COLORS.text} />
           </TouchableOpacity>
         )}
         <Text style={styles.title} numberOfLines={1}>{title}</Text>
@@ -25,7 +26,7 @@ export default function AppHeader({ title, navigation, showBack = false, showNot
       <View style={styles.right}>
         {showSearch && (
           <TouchableOpacity onPress={onSearch} style={styles.iconBtn}>
-            <Ionicons name="search-outline" size={22} color={COLORS.white} />
+            <Ionicons name="search-outline" size={22} color={COLORS.text} />
           </TouchableOpacity>
         )}
         {showNotifications && (
@@ -33,7 +34,7 @@ export default function AppHeader({ title, navigation, showBack = false, showNot
             onPress={() => navigation?.navigate?.('Notifications')}
             style={styles.iconBtn}
           >
-            <Ionicons name="notifications-outline" size={22} color={COLORS.white} />
+            <Ionicons name="notifications-outline" size={22} color={COLORS.text} />
             {unreadCount > 0 && (
               <View style={styles.badge}>
                 <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
@@ -48,29 +49,51 @@ export default function AppHeader({ title, navigation, showBack = false, showNot
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.headerBackground,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm + 2,
-    ...SHADOWS.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.headerBorder,
+    ...shadows.small,
   },
-  left: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  right: { flexDirection: 'row', alignItems: 'center' },
-  title: { ...TYPOGRAPHY.h5, color: COLORS.white, marginLeft: SPACING.sm, flex: 1 },
-  iconBtn: { padding: SPACING.xs, marginHorizontal: 2, position: 'relative' },
+  left: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    flex: 1 
+  },
+  right: { 
+    flexDirection: 'row', 
+    alignItems: 'center' 
+  },
+  title: { 
+    ...typography.h4, 
+    color: COLORS.headerText, 
+    marginLeft: spacing.sm, 
+    flex: 1 
+  },
+  iconBtn: { 
+    padding: spacing.xs, 
+    marginHorizontal: 2, 
+    position: 'relative' 
+  },
   badge: {
     position: 'absolute',
-    top: 0,
-    right: 0,
-    backgroundColor: COLORS.secondary,
+    top: -2,
+    right: -2,
+    backgroundColor: COLORS.primary,
     borderRadius: 10,
-    minWidth: 16,
-    height: 16,
+    minWidth: 18,
+    height: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 3,
+    paddingHorizontal: 4,
   },
-  badgeText: { color: COLORS.white, fontSize: 10, fontWeight: '700' },
+  badgeText: { 
+    color: COLORS.buttonPrimaryText, 
+    fontSize: 10, 
+    fontWeight: '700' 
+  },
 });
