@@ -1,5 +1,5 @@
 // src/utils/constants.js
-import { COLORS } from '../config/theme';
+import { COLORS } from '../../config/theme';
 
 // User Roles
 export const USER_ROLES = {

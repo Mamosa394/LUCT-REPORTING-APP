@@ -12,8 +12,8 @@ import {
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../config/theme';
-import { spacing, typography, shadows } from '../config/theme';
+import { COLORS } from '../../config/theme';
+import { spacing, typography, shadows } from '../../config/theme';
 
 const { width } = Dimensions.get('window');
 

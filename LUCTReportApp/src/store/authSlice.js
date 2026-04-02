@@ -1,189 +1,292 @@
+// src/store/authSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import api from '../../config/api';
+import { 
+  registerUser, 
+  loginUser, 
+  logRegistrationAttempt, 
+  logLoginAttempt,
+  resetPassword 
+} from '../firebase';
 
-// ─── Async Thunks ─────────────────────────────────────────────────────────────
-
-/**
- * Register a new user
- */
-export const registerUser = createAsyncThunk(
-  'auth/register',
-  async ({ name, email, password, role, studentId }, { rejectWithValue }) => {
-    try {
-      const response = await api.post('/auth/register', {
-        name,
-        email,
-        password,
-        role,
-        studentId,
-      });
-      const { token, user } = response.data;
-      await AsyncStorage.setItem('authToken', token);
-      await AsyncStorage.setItem('userData', JSON.stringify(user));
-      return { token, user };
-    } catch (error) {
-      return rejectWithValue(error.message);
-    }
-  }
-);
-
-/**
- * Login existing user
- */
-export const loginUser = createAsyncThunk(
+// Async thunks
+export const login = createAsyncThunk(
   'auth/login',
   async ({ email, password }, { rejectWithValue }) => {
     try {
-      const response = await api.post('/auth/login', { email, password });
-      const { token, user } = response.data;
-      await AsyncStorage.setItem('authToken', token);
-      await AsyncStorage.setItem('userData', JSON.stringify(user));
-      return { token, user };
+      console.log('🔵 [auth] Login attempt for:', email);
+      
+      // Log attempt before login
+      await logLoginAttempt(email, null, false);
+      
+      const result = await loginUser(email, password);
+      
+      // Store in AsyncStorage
+      await AsyncStorage.setItem('token', result.token);
+      await AsyncStorage.setItem('user', JSON.stringify(result.user));
+      
+      // Log successful login
+      await logLoginAttempt(email, result.user.role, true);
+      
+      console.log('✅ [auth] Login successful for:', email);
+      return result;
     } catch (error) {
+      console.error('❌ [auth] Login failed:', error.message);
+      
+      // Log failed login attempt
+      await logLoginAttempt(email, null, false, error.message);
+      
       return rejectWithValue(error.message);
     }
   }
 );
 
-/**
- * Load user from AsyncStorage on app start
- */
+export const register = createAsyncThunk(
+  'auth/register',
+  async (userData, { rejectWithValue }) => {
+    try {
+      console.log('🔵 [auth] Register attempt for:', userData.email);
+      console.log('📦 [auth] Register data:', { 
+        ...userData, 
+        password: '***',
+        confirmPassword: '***'
+      });
+      
+      // Validate required fields
+      if (!userData.name) {
+        throw new Error('Name is required');
+      }
+      if (!userData.email) {
+        throw new Error('Email is required');
+      }
+      if (!userData.password) {
+        throw new Error('Password is required');
+      }
+      if (userData.password !== userData.confirmPassword) {
+        throw new Error('Passwords do not match');
+      }
+      if (!userData.department) {
+        throw new Error('Department is required');
+      }
+      
+      // Role-specific validation
+      if (userData.role === 'student' && !userData.studentId) {
+        throw new Error('Student ID is required for student accounts');
+      }
+      if ((userData.role === 'lecturer' || userData.role === 'prl' || userData.role === 'pl') && !userData.employeeId) {
+        throw new Error('Employee ID is required for staff accounts');
+      }
+      if (userData.role === 'prl' && !userData.stream) {
+        throw new Error('Stream/Department is required for Principal Lecturers');
+      }
+      
+      // Log attempt before registration
+      await logRegistrationAttempt(userData, false);
+      
+      const result = await registerUser(userData);
+      
+      // Store in AsyncStorage
+      await AsyncStorage.setItem('token', result.token);
+      await AsyncStorage.setItem('user', JSON.stringify(result.user));
+      
+      // Log successful registration
+      await logRegistrationAttempt(userData, true);
+      
+      console.log('✅ [auth] Registration successful for:', userData.email);
+      return result;
+    } catch (error) {
+      console.error('❌ [auth] Registration failed:', error.message);
+      
+      // Log failed registration
+      await logRegistrationAttempt(userData, false, error.message);
+      
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const forgotPassword = createAsyncThunk(
+  'auth/forgotPassword',
+  async (email, { rejectWithValue }) => {
+    try {
+      console.log('🔵 [auth] Forgot password attempt for:', email);
+      const result = await resetPassword(email);
+      console.log('✅ [auth] Password reset email sent');
+      return result;
+    } catch (error) {
+      console.error('❌ [auth] Forgot password failed:', error.message);
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const resetPasswordThunk = createAsyncThunk(
+  'auth/resetPassword',
+  async ({ token, password }, { rejectWithValue }) => {
+    try {
+      console.log('🔵 [auth] Reset password attempt');
+      // Note: Firebase handles password reset via email link, not token
+      // This is handled through the resetPassword function above
+      console.log('✅ [auth] Password reset should be handled via email link');
+      return { success: true, message: 'Password reset via email link' };
+    } catch (error) {
+      console.error('❌ [auth] Reset password failed:', error.message);
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 export const loadStoredUser = createAsyncThunk(
   'auth/loadStoredUser',
   async (_, { rejectWithValue }) => {
     try {
-      const token = await AsyncStorage.getItem('authToken');
-      const userData = await AsyncStorage.getItem('userData');
+      console.log('🔵 [auth] Loading stored user');
+      const token = await AsyncStorage.getItem('token');
+      const userData = await AsyncStorage.getItem('user');
+      
       if (token && userData) {
-        return { token, user: JSON.parse(userData) };
+        const user = JSON.parse(userData);
+        console.log('✅ [auth] Stored user loaded:', user?.email);
+        return { token, user };
       }
+      console.log('ℹ️ [auth] No stored user found');
       return null;
     } catch (error) {
+      console.error('❌ [auth] Failed to load stored user:', error.message);
       return rejectWithValue(error.message);
     }
   }
 );
-
-/**
- * Logout user
- */
-export const logoutUser = createAsyncThunk('auth/logout', async () => {
-  await AsyncStorage.multiRemove(['authToken', 'userData']);
-});
-
-/**
- * Update user profile
- */
-export const updateProfile = createAsyncThunk(
-  'auth/updateProfile',
-  async ({ userId, data }, { rejectWithValue }) => {
-    try {
-      const response = await api.put(`/users/${userId}`, data);
-      const updatedUser = response.data.user;
-      await AsyncStorage.setItem('userData', JSON.stringify(updatedUser));
-      return updatedUser;
-    } catch (error) {
-      return rejectWithValue(error.message);
-    }
-  }
-);
-
-// ─── Slice ────────────────────────────────────────────────────────────────────
 
 const authSlice = createSlice({
   name: 'auth',
   initialState: {
     user: null,
     token: null,
-    loading: false,
+    isLoading: false,
     error: null,
+    isAuthenticated: false,
     isInitialized: false,
   },
   reducers: {
+    logout: (state) => {
+      console.log('🔵 [auth] Logging out user:', state.user?.email);
+      state.user = null;
+      state.token = null;
+      state.isAuthenticated = false;
+      state.error = null;
+      // Clear AsyncStorage
+      AsyncStorage.multiRemove(['token', 'user']);
+      console.log('✅ [auth] Logout successful');
+    },
     clearError: (state) => {
+      console.log('🔵 [auth] Clearing error');
       state.error = null;
     },
     setUser: (state, action) => {
+      console.log('🔵 [auth] Setting user manually:', action.payload?.email);
       state.user = action.payload;
+      state.isAuthenticated = true;
     },
   },
   extraReducers: (builder) => {
-    // Register
-    builder
-      .addCase(registerUser.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(registerUser.fulfilled, (state, action) => {
-        state.loading = false;
-        state.user = action.payload.user;
-        state.token = action.payload.token;
-      })
-      .addCase(registerUser.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      });
-
     // Login
     builder
-      .addCase(loginUser.pending, (state) => {
-        state.loading = true;
+      .addCase(login.pending, (state) => {
+        console.log('🔄 [auth] Login pending');
+        state.isLoading = true;
         state.error = null;
       })
-      .addCase(loginUser.fulfilled, (state, action) => {
-        state.loading = false;
+      .addCase(login.fulfilled, (state, action) => {
+        console.log('✅ [auth] Login fulfilled');
+        state.isLoading = false;
+        state.isAuthenticated = true;
         state.user = action.payload.user;
         state.token = action.payload.token;
       })
-      .addCase(loginUser.rejected, (state, action) => {
-        state.loading = false;
+      .addCase(login.rejected, (state, action) => {
+        console.log('❌ [auth] Login rejected:', action.payload);
+        state.isLoading = false;
         state.error = action.payload;
-      });
-
-    // Load stored user
+      })
+    
+    // Register
     builder
+      .addCase(register.pending, (state) => {
+        console.log('🔄 [auth] Register pending');
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(register.fulfilled, (state, action) => {
+        console.log('✅ [auth] Register fulfilled for:', action.payload.user?.email);
+        state.isLoading = false;
+        state.isAuthenticated = true;
+        state.user = action.payload.user;
+        state.token = action.payload.token;
+      })
+      .addCase(register.rejected, (state, action) => {
+        console.log('❌ [auth] Register rejected:', action.payload);
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+    
+    // Forgot Password
+    builder
+      .addCase(forgotPassword.pending, (state) => {
+        console.log('🔄 [auth] Forgot password pending');
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(forgotPassword.fulfilled, (state) => {
+        console.log('✅ [auth] Forgot password fulfilled');
+        state.isLoading = false;
+      })
+      .addCase(forgotPassword.rejected, (state, action) => {
+        console.log('❌ [auth] Forgot password rejected:', action.payload);
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+    
+    // Reset Password
+    builder
+      .addCase(resetPasswordThunk.pending, (state) => {
+        console.log('🔄 [auth] Reset password pending');
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(resetPasswordThunk.fulfilled, (state) => {
+        console.log('✅ [auth] Reset password fulfilled');
+        state.isLoading = false;
+      })
+      .addCase(resetPasswordThunk.rejected, (state, action) => {
+        console.log('❌ [auth] Reset password rejected:', action.payload);
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+    
+    // Load Stored User
+    builder
+      .addCase(loadStoredUser.pending, (state) => {
+        console.log('🔄 [auth] Load stored user pending');
+        state.isLoading = true;
+      })
       .addCase(loadStoredUser.fulfilled, (state, action) => {
+        console.log('✅ [auth] Load stored user fulfilled');
+        state.isLoading = false;
+        state.isInitialized = true;
         if (action.payload) {
           state.user = action.payload.user;
           state.token = action.payload.token;
+          state.isAuthenticated = true;
         }
-        state.isInitialized = true;
       })
       .addCase(loadStoredUser.rejected, (state) => {
+        console.log('❌ [auth] Load stored user rejected');
+        state.isLoading = false;
         state.isInitialized = true;
-      });
-
-    // Logout
-    builder.addCase(logoutUser.fulfilled, (state) => {
-      state.user = null;
-      state.token = null;
-    });
-
-    // Update profile
-    builder
-      .addCase(updateProfile.pending, (state) => {
-        state.loading = true;
-      })
-      .addCase(updateProfile.fulfilled, (state, action) => {
-        state.loading = false;
-        state.user = action.payload;
-      })
-      .addCase(updateProfile.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
       });
   },
 });
 
-export const { clearError, setUser } = authSlice.actions;
-
-// Selectors
-export const selectUser = (state) => state.auth.user;
-export const selectToken = (state) => state.auth.token;
-export const selectAuthLoading = (state) => state.auth.loading;
-export const selectAuthError = (state) => state.auth.error;
-export const selectIsInitialized = (state) => state.auth.isInitialized;
-export const selectUserRole = (state) => state.auth.user?.role;
-
+export const { logout, clearError, setUser } = authSlice.actions;
 export default authSlice.reducer;

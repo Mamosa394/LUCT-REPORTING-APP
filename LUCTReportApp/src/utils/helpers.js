@@ -1,6 +1,6 @@
 // src/utils/helpers.js
 import { Platform } from 'react-native';
-import { VALIDATION_PATTERNS, DATE_FORMATS } from './constants';
+import { VALIDATION_PATTERNS, DATE_FORMATS } from '../../src/utils/constants';
 import moment from 'moment';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
@@ -138,6 +138,49 @@ export const throttle = (func, limit) => {
 // Generate random ID
 export const generateId = () => {
   return `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+};
+
+// Get IP address of the device/user
+export const getIpAddress = async () => {
+  try {
+    // Try multiple IP services for redundancy
+    const services = [
+      'https://api.ipify.org?format=json',
+      'https://api.my-ip.io/ip.json',
+      'https://ipapi.co/json/'
+    ];
+    
+    for (const service of services) {
+      try {
+        const response = await fetch(service);
+        const data = await response.json();
+        
+        // Different services return different formats
+        if (data.ip) return data.ip;
+        if (data.ip_address) return data.ip_address;
+        if (data.ipAddress) return data.ipAddress;
+        if (typeof data === 'string') return data;
+      } catch (err) {
+        console.log(`Failed to fetch IP from ${service}:`, err);
+        continue;
+      }
+    }
+    
+    // Fallback - try to get from network info if available
+    try {
+      // For React Native with network info
+      const NetworkInfo = require('react-native-network-info').NetworkInfo;
+      const ip = await NetworkInfo.getIPAddress();
+      if (ip && ip !== '0.0.0.0') return ip;
+    } catch (err) {
+      console.log('Failed to get IP from network info:', err);
+    }
+    
+    return 'Unknown';
+  } catch (error) {
+    console.error('Failed to get IP address:', error);
+    return 'Unknown';
+  }
 };
 
 // Deep clone object

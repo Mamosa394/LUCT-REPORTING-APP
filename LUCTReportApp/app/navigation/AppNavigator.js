@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSelector } from 'react-redux';
 import { COLORS } from '../../config/theme';
 
-// Import screens - you'll need to create these
+// Import screens
 import LoginScreen from '../auth/LoginScreen';
 import RegisterScreen from '../auth/RegisterScreen';
 import ForgotPassword from '../auth/ForgotPassword';
@@ -35,7 +35,7 @@ import PRLMonitoring from '../prl/Monitoring';
 import PRLRatings from '../prl/Ratings';
 import PRLProfile from '../prl/Profile';
 
-// PL screens
+// PL screens (Program Leader - now has admin privileges)
 import PLDashboard from '../pl/Dashboard';
 import PLCourses from '../pl/Courses';
 import PLModules from '../pl/Modules';
@@ -44,6 +44,7 @@ import PLReports from '../pl/Reports';
 import PLMonitoring from '../pl/Monitoring';
 import PLRatings from '../pl/Ratings';
 import PLProfile from '../pl/Profile';
+import AdminScreen from '../pl/AdminScreen'; 
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -163,7 +164,7 @@ function PRLTabs() {
   );
 }
 
-// Tab Navigator for PL
+// Tab Navigator for PL (Program Leader with Admin Privileges)
 function PLTabs() {
   return (
     <Tab.Navigator
@@ -171,6 +172,7 @@ function PLTabs() {
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
           if (route.name === 'Dashboard') iconName = focused ? 'home' : 'home-outline';
+          else if (route.name === 'Admin Panel') iconName = focused ? 'shield' : 'shield-outline';
           else if (route.name === 'Courses') iconName = focused ? 'book' : 'book-outline';
           else if (route.name === 'Modules') iconName = focused ? 'layers' : 'layers-outline';
           else if (route.name === 'Lecturers') iconName = focused ? 'people' : 'people-outline';
@@ -194,14 +196,47 @@ function PLTabs() {
         },
       })}
     >
-      <Tab.Screen name="Dashboard" component={PLDashboard} />
-      <Tab.Screen name="Courses" component={PLCourses} />
-      <Tab.Screen name="Modules" component={PLModules} />
-      <Tab.Screen name="Lecturers" component={PLLecturers} />
-      <Tab.Screen name="Reports" component={PLReports} />
-      <Tab.Screen name="Monitoring" component={PLMonitoring} />
-      <Tab.Screen name="Ratings" component={PLRatings} />
-      <Tab.Screen name="Profile" component={PLProfile} />
+      <Tab.Screen 
+        name="Dashboard" 
+        component={PLDashboard} 
+        options={{ title: 'PL Dashboard' }}
+      />
+      <Tab.Screen 
+        name="Admin Panel" 
+        component={PLAdminPanel} 
+        options={{ 
+          title: 'Admin Panel',
+          tabBarLabel: 'Admin',
+        }}
+      />
+      <Tab.Screen 
+        name="Courses" 
+        component={PLCourses} 
+      />
+      <Tab.Screen 
+        name="Modules" 
+        component={PLModules} 
+      />
+      <Tab.Screen 
+        name="Lecturers" 
+        component={PLLecturers} 
+      />
+      <Tab.Screen 
+        name="Reports" 
+        component={PLReports} 
+      />
+      <Tab.Screen 
+        name="Monitoring" 
+        component={PLMonitoring} 
+      />
+      <Tab.Screen 
+        name="Ratings" 
+        component={PLRatings} 
+      />
+      <Tab.Screen 
+        name="Profile" 
+        component={PLProfile} 
+      />
     </Tab.Navigator>
   );
 }
@@ -222,6 +257,7 @@ export default function AppNavigator() {
       );
     }
     
+    // Role-based navigation - Admin role removed, PL now has admin privileges
     switch (user.role) {
       case 'student':
         return <StudentTabs />;
@@ -230,8 +266,10 @@ export default function AppNavigator() {
       case 'prl':
         return <PRLTabs />;
       case 'pl':
-        return <PLTabs />;
+        return <PLTabs />; // Program Leader now has full admin access
       default:
+        // Fallback to student if role is invalid
+        console.warn(`Unknown role: ${user.role}, defaulting to StudentTabs`);
         return <StudentTabs />;
     }
   };

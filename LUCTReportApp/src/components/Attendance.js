@@ -2,8 +2,8 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Calendar } from 'react-native-calendars';
-import { COLORS } from '../config/theme';
-import { spacing, typography, shadows } from '../config/theme';
+import { COLORS } from '../../config/theme';
+import { spacing, typography, shadows } from '../../config/theme';
 
 // Attendance Calendar
 export function AttendanceCalendar({ records, onDayPress }) {

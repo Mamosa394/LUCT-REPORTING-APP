@@ -2,9 +2,9 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../config/theme';
-import { spacing, typography, shadows } from '../config/theme';
-import { Button, Input } from './UI';
+import { COLORS } from '../../config/theme';
+import { spacing, typography, shadows } from '../../config/theme';
+import { Button, Input } from '../../src/components/UI';
 
 // Star Rating Component
 export function StarRating({ value, onChange, size = 28, readonly = false }) {

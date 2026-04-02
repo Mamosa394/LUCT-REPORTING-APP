@@ -3,8 +3,8 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector } from 'react-redux';
-import { COLORS } from '../config/theme';
-import { spacing, typography, shadows } from '../config/theme';
+import { COLORS } from '../../config/theme';
+import { spacing, typography, shadows } from '../../config/theme';
 
 export default function AppHeader({ title, navigation, showBack = false, showNotifications = true, showSearch = false, onSearch }) {
   const { unreadCount } = useSelector((s) => s.notifications || { unreadCount: 0 });

@@ -13,20 +13,36 @@ import { registerSchema } from '../../src/utils/validators';
 import { Input, Button } from '../../src/components/UI';
 import { COLORS, spacing, typography } from '../../config/theme';
 
-const ROLES = ['student', 'lecturer'];
+// Roles - Admin removed, Program Leader gets admin privileges
+const ROLES = [
+  { id: 'student', label: 'Student', icon: 'school-outline' },
+  { id: 'lecturer', label: 'Lecturer', icon: 'people-outline' },
+  { id: 'prl', label: 'Principal Lecturer', icon: 'star-outline' },
+  { id: 'pl', label: 'Program Leader', icon: 'flag-outline' },
+];
 
 export default function RegisterScreen({ navigation }) {
   const dispatch = useDispatch();
   const { isLoading, error } = useSelector(state => state.auth);
   const [selectedRole, setSelectedRole] = useState('student');
 
-  const { control, handleSubmit, setValue, formState: { errors } } = useForm({
+  const { control, handleSubmit, setValue, watch, formState: { errors } } = useForm({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      name: '', email: '', password: '', confirmPassword: '',
-      role: 'student', department: '', studentId: '', employeeId: '',
+      name: '', 
+      email: '', 
+      password: '', 
+      confirmPassword: '',
+      role: 'student', 
+      department: '', 
+      studentId: '', 
+      employeeId: '',
+      stream: '',
     },
   });
+
+  // Watch the role field to conditionally show/hide fields
+  const watchRole = watch('role');
 
   useEffect(() => {
     if (error) {
@@ -39,16 +55,89 @@ export default function RegisterScreen({ navigation }) {
   const handleRoleSelect = (role) => {
     setSelectedRole(role);
     setValue('role', role);
+    
+    // Clear role-specific fields when switching roles
+    setValue('studentId', '');
+    setValue('employeeId', '');
+    setValue('stream', '');
   };
 
   const onSubmit = async (data) => {
+    console.log('🔵 [RegisterScreen] Form submitted with data:', { ...data, password: '***' });
+    
+    // Validate role-specific fields before submission
+    if (data.role === 'student' && !data.studentId) {
+      console.log('❌ [RegisterScreen] Student ID missing');
+      Alert.alert('Validation Error', 'Student ID is required for student accounts');
+      return;
+    }
+    
+    if ((data.role === 'lecturer' || data.role === 'prl' || data.role === 'pl') && !data.employeeId) {
+      console.log('❌ [RegisterScreen] Employee ID missing for role:', data.role);
+      Alert.alert('Validation Error', 'Employee ID is required for staff accounts');
+      return;
+    }
+    
+    if (data.role === 'prl' && !data.stream) {
+      console.log('❌ [RegisterScreen] Stream missing for PRL');
+      Alert.alert('Validation Error', 'Stream/Department is required for Principal Lecturers');
+      return;
+    }
+    
+    if (!data.department) {
+      console.log('❌ [RegisterScreen] Department missing');
+      Alert.alert('Validation Error', 'Department is required for all accounts');
+      return;
+    }
+
+    if (!data.name) {
+      console.log('❌ [RegisterScreen] Name missing');
+      Alert.alert('Validation Error', 'Full name is required');
+      return;
+    }
+
+    if (!data.email) {
+      console.log('❌ [RegisterScreen] Email missing');
+      Alert.alert('Validation Error', 'Email is required');
+      return;
+    }
+
+    if (!data.password) {
+      console.log('❌ [RegisterScreen] Password missing');
+      Alert.alert('Validation Error', 'Password is required');
+      return;
+    }
+
+    if (data.password !== data.confirmPassword) {
+      console.log('❌ [RegisterScreen] Passwords do not match');
+      Alert.alert('Validation Error', 'Passwords do not match');
+      return;
+    }
+
+    console.log('✅ [RegisterScreen] Validation passed, dispatching register action...');
+    
     try {
-      await dispatch(register(data)).unwrap();
-      Alert.alert('Success!', 'Account created successfully. Please login.', [
-        { text: 'Go to Login', onPress: () => navigation.navigate('Login') },
-      ]);
+      const result = await dispatch(register(data)).unwrap();
+      console.log('✅ [RegisterScreen] Registration successful:', result);
+      
+      let successMessage = `Account created successfully as ${ROLES.find(r => r.id === data.role)?.label}. Please login.`;
+      if (data.role === 'pl') {
+        successMessage = `Account created successfully as Program Leader. You have full administrative privileges. Please login.`;
+      }
+      
+      Alert.alert(
+        'Success!', 
+        successMessage,
+        [
+          { 
+            text: 'Go to Login', 
+            onPress: () => navigation.navigate('Login') 
+          },
+        ]
+      );
     } catch (err) {
-      // Error is handled by the useEffect above
+      console.error('❌ [RegisterScreen] Registration failed:', err);
+      Alert.alert('Registration Error', err.message || 'Failed to create account. Please try again.');
     }
   };
 
@@ -71,27 +160,50 @@ export default function RegisterScreen({ navigation }) {
           <Text style={styles.title}>Create Account</Text>
           <Text style={styles.subtitle}>Join the LUCT Reporting System</Text>
 
-          {/* Role Selection */}
+          {/* Role Selection - Professional Stack Layout */}
           <Text style={styles.sectionLabel}>Select Your Role</Text>
-          <View style={styles.rolesContainer}>
+          <View style={styles.rolesStack}>
             {ROLES.map((role) => (
               <TouchableOpacity
-                key={role}
+                key={role.id}
                 style={[
-                  styles.roleChip,
-                  selectedRole === role && styles.roleChipActive,
+                  styles.roleItem,
+                  selectedRole === role.id && styles.roleItemActive,
                 ]}
-                onPress={() => handleRoleSelect(role)}
+                onPress={() => handleRoleSelect(role.id)}
               >
-                <Text style={[
-                  styles.roleChipText,
-                  selectedRole === role && styles.roleChipTextActive,
+                <View style={[
+                  styles.roleIconContainer,
+                  selectedRole === role.id && styles.roleIconContainerActive
                 ]}>
-                  {role === 'student' ? 'Student' : 'Lecturer'}
+                  <Ionicons 
+                    name={role.icon} 
+                    size={22} 
+                    color={selectedRole === role.id ? COLORS.buttonPrimaryText : COLORS.primary} 
+                  />
+                </View>
+                <Text style={[
+                  styles.roleLabel,
+                  selectedRole === role.id && styles.roleLabelActive,
+                ]}>
+                  {role.label}
                 </Text>
+                {selectedRole === role.id && (
+                  <Ionicons name="checkmark-circle" size={22} color={COLORS.primary} style={styles.roleCheckmark} />
+                )}
               </TouchableOpacity>
             ))}
           </View>
+
+          {/* Program Leader Note - Admin privileges info */}
+          {watchRole === 'pl' && (
+            <View style={styles.programLeaderNote}>
+              <Ionicons name="shield-checkmark-outline" size={20} color={COLORS.primary} />
+              <Text style={styles.programLeaderNoteText}>
+                Program Leaders have full administrative access to monitor registrations, logins, and all system data.
+              </Text>
+            </View>
+          )}
 
           <Controller
             control={control}
@@ -165,14 +277,15 @@ export default function RegisterScreen({ navigation }) {
                 label="Department"
                 value={value}
                 onChangeText={onChange}
-                placeholder="e.g., Computer Science"
+                placeholder="e.g.FICT"
                 error={errors.department?.message}
                 leftIcon={<Ionicons name="business-outline" size={20} color={COLORS.textSecondary} />}
               />
             )}
           />
 
-          {selectedRole === 'student' && (
+          {/* Student-specific fields */}
+          {watchRole === 'student' && (
             <Controller
               control={control}
               name="studentId"
@@ -181,7 +294,7 @@ export default function RegisterScreen({ navigation }) {
                   label="Student ID"
                   value={value}
                   onChangeText={onChange}
-                  placeholder="e.g., CS123456"
+                  placeholder="e.g., 901017000"
                   error={errors.studentId?.message}
                   leftIcon={<Ionicons name="card-outline" size={20} color={COLORS.textSecondary} />}
                 />
@@ -189,7 +302,8 @@ export default function RegisterScreen({ navigation }) {
             />
           )}
 
-          {selectedRole === 'lecturer' && (
+          {/* Lecturer, PRL, and PL-specific fields */}
+          {(watchRole === 'lecturer' || watchRole === 'prl' || watchRole === 'pl') && (
             <Controller
               control={control}
               name="employeeId"
@@ -200,7 +314,25 @@ export default function RegisterScreen({ navigation }) {
                   onChangeText={onChange}
                   placeholder="e.g., LCT00123"
                   error={errors.employeeId?.message}
-                  leftIcon={<Ionicons name="badge-outline" size={20} color={COLORS.textSecondary} />}
+                  leftIcon={<Ionicons name="id-card-outline" size={20} color={COLORS.textSecondary} />}
+                />
+              )}
+            />
+          )}
+
+          {/* PRL-specific fields */}
+          {watchRole === 'prl' && (
+            <Controller
+              control={control}
+              name="stream"
+              render={({ field: { onChange, value } }) => (
+                <Input
+                  label="Department Managed"
+                  value={value}
+                  onChangeText={onChange}
+                  placeholder="e.g., FICT"
+                  error={errors.stream?.message}
+                  leftIcon={<Ionicons name="git-branch-outline" size={20} color={COLORS.textSecondary} />}
                 />
               )}
             />
@@ -268,32 +400,71 @@ const styles = StyleSheet.create({
   sectionLabel: {
     ...typography.body,
     color: COLORS.textSecondary,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
+    fontWeight: '600',
   },
-  rolesContainer: {
-    flexDirection: 'row',
+  rolesStack: {
     marginBottom: spacing.lg,
+    gap: spacing.sm,
   },
-  roleChip: {
+  roleItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: 8,
+    borderRadius: 12,
     backgroundColor: COLORS.surfaceLight,
-    marginRight: spacing.sm,
     borderWidth: 1,
     borderColor: COLORS.border,
+    position: 'relative',
   },
-  roleChipActive: {
-    backgroundColor: COLORS.primary,
+  roleItemActive: {
+    backgroundColor: COLORS.primary + '08',
     borderColor: COLORS.primary,
+    borderWidth: 2,
   },
-  roleChipText: {
-    ...typography.bodySmall,
-    color: COLORS.textSecondary,
+  roleIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.primary + '15',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.md,
   },
-  roleChipTextActive: {
-    color: COLORS.buttonPrimaryText,
+  roleIconContainerActive: {
+    backgroundColor: COLORS.primary,
+  },
+  roleLabel: {
+    ...typography.body,
+    fontSize: 16,
+    fontWeight: '500',
+    color: COLORS.text,
+    flex: 1,
+  },
+  roleLabelActive: {
+    color: COLORS.primary,
     fontWeight: '600',
+  },
+  roleCheckmark: {
+    marginLeft: spacing.sm,
+  },
+  programLeaderNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary + '10',
+    padding: spacing.md,
+    borderRadius: 8,
+    marginBottom: spacing.lg,
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: COLORS.primary + '30',
+  },
+  programLeaderNoteText: {
+    ...typography.caption,
+    color: COLORS.primary,
+    flex: 1,
+    fontWeight: '500',
   },
   registerButton: {
     marginTop: spacing.md,
