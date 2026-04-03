@@ -1,4 +1,3 @@
-// src/store/authSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { 
@@ -7,7 +6,7 @@ import {
   logRegistrationAttempt, 
   logLoginAttempt,
   resetPassword 
-} from '../firebase';
+} from '../../src/services/firebase';
 
 // Async thunks
 export const login = createAsyncThunk(

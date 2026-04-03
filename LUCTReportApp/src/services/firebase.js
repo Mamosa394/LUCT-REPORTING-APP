@@ -12,7 +12,7 @@ import { getFirestore, collection, doc, setDoc, getDoc, addDoc, query, orderBy, 
 // IMPORTANT: Replace this with your actual Firebase config from Firebase Console
 const firebaseConfig = {
   apiKey: "AIzaSyDrv_30LrrF5RfJrforMXJZzAeYEMR8Mfg",
-  authDomain: "https://accounts.google.com/o/oauth2/auth",
+  authDomain: "luct-reporting-database.firebaseapp.com",
   projectId: "luct-reporting-database",
   storageBucket: "luct-reporting-database.firebasestorage.app",
   messagingSenderId: "612676312585",

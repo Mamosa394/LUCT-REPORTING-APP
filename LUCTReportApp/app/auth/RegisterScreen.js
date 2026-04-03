@@ -137,7 +137,42 @@ export default function RegisterScreen({ navigation }) {
       );
     } catch (err) {
       console.error('❌ [RegisterScreen] Registration failed:', err);
-      Alert.alert('Registration Error', err.message || 'Failed to create account. Please try again.');
+      
+      // Handle specific error messages
+      let errorMessage = err.message || 'Failed to create account. Please try again.';
+      
+      // Firebase specific error messages
+      if (errorMessage.includes('auth/email-already-in-use')) {
+        errorMessage = 'This email is already registered. Please login or use a different email.';
+      } else if (errorMessage.includes('auth/weak-password')) {
+        errorMessage = 'Password is too weak. Please use a stronger password (at least 6 characters).';
+      } else if (errorMessage.includes('auth/invalid-email')) {
+        errorMessage = 'Invalid email address format. Please enter a valid email.';
+      } else if (errorMessage.includes('auth/network-request-failed')) {
+        errorMessage = 'Network error. Please check your internet connection.';
+      } else if (errorMessage.includes('Database not found')) {
+        errorMessage = 'Firestore database not configured. Please contact support.';
+      } else if (errorMessage.includes('Permission denied')) {
+        errorMessage = 'Permission denied. Please check your Firebase security rules.';
+      } else if (errorMessage.includes('Name is required')) {
+        errorMessage = 'Full name is required.';
+      } else if (errorMessage.includes('Email is required')) {
+        errorMessage = 'Email address is required.';
+      } else if (errorMessage.includes('Password is required')) {
+        errorMessage = 'Password is required.';
+      } else if (errorMessage.includes('Passwords do not match')) {
+        errorMessage = 'Passwords do not match. Please re-enter your password.';
+      } else if (errorMessage.includes('Department is required')) {
+        errorMessage = 'Department is required for all accounts.';
+      } else if (errorMessage.includes('Student ID is required')) {
+        errorMessage = 'Student ID is required for student accounts.';
+      } else if (errorMessage.includes('Employee ID is required')) {
+        errorMessage = 'Employee ID is required for staff accounts.';
+      } else if (errorMessage.includes('Stream/Department is required')) {
+        errorMessage = 'Stream/Department is required for Principal Lecturers.';
+      }
+      
+      Alert.alert('Registration Failed', errorMessage);
     }
   };
 
@@ -274,7 +309,7 @@ export default function RegisterScreen({ navigation }) {
             name="department"
             render={({ field: { onChange, value } }) => (
               <Input
-                label="Department"
+                label="Faculty"
                 value={value}
                 onChangeText={onChange}
                 placeholder="e.g.FICT"

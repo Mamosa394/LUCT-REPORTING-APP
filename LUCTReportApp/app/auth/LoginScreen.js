@@ -15,7 +15,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { login, clearError } from '../../src/store/authSlice';
 import { loginSchema } from '../../src/utils/validators';
-import { getIpAddress } from '../../src/utils/helpers';
 import { COLORS, spacing, typography } from '../../config/theme';
 
 // Debug logs for imports
@@ -46,7 +45,6 @@ try {
 console.log('📦 [LoginScreen] loginSchema:', loginSchema ? '✅ Loaded' : '❌ UNDEFINED');
 console.log('📦 [LoginScreen] login action:', typeof login);
 console.log('📦 [LoginScreen] clearError action:', typeof clearError);
-console.log('📦 [LoginScreen] getIpAddress:', typeof getIpAddress);
 
 // Role-specific dashboard routes - UPDATED (removed admin)
 const getDashboardRoute = (role) => {
@@ -58,7 +56,7 @@ const getDashboardRoute = (role) => {
     case 'prl':
       return 'PRLDashboard';
     case 'pl':
-      return 'PLDashboard'; // Program Leader now has admin privileges
+      return 'PLDashboard'; 
     default:
       return 'StudentDashboard';
   }
@@ -95,29 +93,6 @@ const getWelcomeMessage = (role, name) => {
       return `${baseMessage}\n\nYou can view classes, attendance, and ratings.`;
     default:
       return baseMessage;
-  }
-};
-
-// Function to log login attempts
-const logLoginAttempt = async (email, role, success, errorMessage = null) => {
-  try {
-    const logData = {
-      timestamp: new Date().toISOString(),
-      email: email,
-      role: role || 'unknown',
-      success: success,
-      errorMessage: errorMessage,
-      ipAddress: await getIpAddress(),
-      userAgent: Platform.OS + ' ' + Platform.Version,
-      deviceType: Platform.OS,
-    };
-    
-    // Import Firebase dynamically to avoid circular dependencies
-    const { db } = require('../../src/firebase');
-    await db.collection('login_logs').add(logData);
-    console.log('📝 [LoginScreen] Login attempt logged:', { email, success });
-  } catch (err) {
-    console.error('❌ [LoginScreen] Failed to log login attempt:', err);
   }
 };
 
@@ -175,18 +150,12 @@ export default function LoginScreen({ navigation }) {
     console.log('📤 [LoginScreen] Form submitted with:', { email: data.email, password: '***' });
     
     try {
-      // Log attempt before login
-      await logLoginAttempt(data.email, null, false);
-      
       const result = await dispatch(login(data)).unwrap();
       console.log('✅ [LoginScreen] Login successful:', result);
       
       // Get user role from result
       const userRole = result.user?.role || result.role;
       console.log('👤 [LoginScreen] User role:', userRole);
-      
-      // Log successful login with role
-      await logLoginAttempt(data.email, userRole, true);
       
       // Validate role exists in our system (should be one of: student, lecturer, prl, pl)
       const validRoles = ['student', 'lecturer', 'prl', 'pl'];
@@ -215,9 +184,6 @@ export default function LoginScreen({ navigation }) {
       );
     } catch (err) {
       console.error('❌ [LoginScreen] Login failed:', err);
-      
-      // Log failed login attempt
-      await logLoginAttempt(data.email, null, false, err.message);
       
       // Error is handled by the useEffect above
     }

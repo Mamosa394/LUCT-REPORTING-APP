@@ -13,37 +13,37 @@ import RegisterScreen from '../auth/RegisterScreen';
 import ForgotPassword from '../auth/ForgotPassword';
 
 // Student screens
-import StudentDashboard from '../student/Dashboard';
-import StudentAttendance from '../student/Attendance';
-import StudentCourses from '../student/Courses';
-import StudentRatings from '../student/Ratings';
-import StudentProfile from '../student/Profile';
+import StudentDashboard from '../student/StudentDashboard';
+import StudentAttendance from '../student/StudentAttendance';
+import StudentCourses from '../student/StudentCourses';
+import StudentRatings from '../student/StudentRatings';
+import StudentProfile from '../student/StudentProfile';
 
 // Lecturer screens
-import LecturerDashboard from '../lecturer/Dashboard';
-import LecturerClasses from '../lecturer/Classes';
-import LecturerAttendance from '../lecturer/Attendance';
-import LecturerReports from '../lecturer/Reports';
-import LecturerRatings from '../lecturer/Ratings';
-import LecturerProfile from '../lecturer/Profile';
+import LecturerDashboard from '../lecturer/LecturerDashboard';
+import LecturerClasses from '../lecturer/LecturerClasses';
+import LecturerAttendance from '../lecturer/LecturerAttendance';
+import LecturerReports from '../lecturer/LecturerReports';
+import LecturerRatings from '../lecturer/LecturerRatings';
+import LecturerProfile from '../lecturer/LecturerProfile';
 
 // PRL screens
-import PRLDashboard from '../prl/Dashboard';
-import PRLCourses from '../prl/Courses';
-import PRLReports from '../prl/Reports';
-import PRLMonitoring from '../prl/Monitoring';
-import PRLRatings from '../prl/Ratings';
-import PRLProfile from '../prl/Profile';
+import PRLDashboard from '../prl/prlDashboard';
+import PRLCourses from '../prl/prlCourses';
+import PRLReports from '../prl/prlReports';
+import PRLMonitoring from '../prl/prlMonitoring';
+import PRLRatings from '../prl/prlRatings';
+import PRLProfile from '../prl/prlProfile';
 
 // PL screens (Program Leader - now has admin privileges)
-import PLDashboard from '../pl/Dashboard';
-import PLCourses from '../pl/Courses';
-import PLModules from '../pl/Modules';
-import PLLecturers from '../pl/Lecturers';
-import PLReports from '../pl/Reports';
-import PLMonitoring from '../pl/Monitoring';
-import PLRatings from '../pl/Ratings';
-import PLProfile from '../pl/Profile';
+import PLDashboard from '../pl/plDashboard';
+import PLCourses from '../pl/plCourses';
+import PLModules from '../pl/plModules';
+import PLLecturers from '../pl/plLecturers';
+import PLReports from '../pl/plReports';
+import PLMonitoring from '../pl/plMonitoring';
+import PLRatings from '../pl/plRatings';
+import PLProfile from '../pl/plProfile';
 import AdminScreen from '../pl/AdminScreen'; 
 
 const Stack = createStackNavigator();
@@ -203,7 +203,7 @@ function PLTabs() {
       />
       <Tab.Screen 
         name="Admin Panel" 
-        component={PLAdminPanel} 
+        component={AdminScreen} 
         options={{ 
           title: 'Admin Panel',
           tabBarLabel: 'Admin',
@@ -241,42 +241,38 @@ function PLTabs() {
   );
 }
 
-// Main Navigator
+// Main Navigator - FIXED: Now properly registers all screens in Stack Navigator
 export default function AppNavigator() {
   const { isAuthenticated, user } = useSelector(state => state.auth);
   
-  // Determine which tab navigator to use based on user role
-  const getNavigator = () => {
-    if (!isAuthenticated || !user) {
-      return (
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="Register" component={RegisterScreen} />
-          <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
-        </Stack.Navigator>
-      );
-    }
-    
-    // Role-based navigation - Admin role removed, PL now has admin privileges
-    switch (user.role) {
-      case 'student':
-        return <StudentTabs />;
-      case 'lecturer':
-        return <LecturerTabs />;
-      case 'prl':
-        return <PRLTabs />;
-      case 'pl':
-        return <PLTabs />; // Program Leader now has full admin access
-      default:
-        // Fallback to student if role is invalid
-        console.warn(`Unknown role: ${user.role}, defaulting to StudentTabs`);
-        return <StudentTabs />;
-    }
-  };
-
   return (
     <NavigationContainer>
-      {getNavigator()}
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {!isAuthenticated ? (
+          // Auth screens
+          <>
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="Register" component={RegisterScreen} />
+            <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
+          </>
+        ) : (
+          // Dashboard screens based on role
+          <>
+            {user?.role === 'student' && (
+              <Stack.Screen name="StudentDashboard" component={StudentTabs} />
+            )}
+            {user?.role === 'lecturer' && (
+              <Stack.Screen name="LecturerDashboard" component={LecturerTabs} />
+            )}
+            {user?.role === 'prl' && (
+              <Stack.Screen name="PRLDashboard" component={PRLTabs} />
+            )}
+            {user?.role === 'pl' && (
+              <Stack.Screen name="PLDashboard" component={PLTabs} />
+            )}
+          </>
+        )}
+      </Stack.Navigator>
     </NavigationContainer>
   );
 }
