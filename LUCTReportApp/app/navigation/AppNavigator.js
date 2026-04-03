@@ -35,7 +35,7 @@ import PRLMonitoring from '../prl/prlMonitoring';
 import PRLRatings from '../prl/prlRatings';
 import PRLProfile from '../prl/prlProfile';
 
-// PL screens (Program Leader - now has admin privileges)
+// PL screens (Program Leader)
 import PLDashboard from '../pl/plDashboard';
 import PLCourses from '../pl/plCourses';
 import PLModules from '../pl/plModules';
@@ -44,7 +44,7 @@ import PLReports from '../pl/plReports';
 import PLMonitoring from '../pl/plMonitoring';
 import PLRatings from '../pl/plRatings';
 import PLProfile from '../pl/plProfile';
-import AdminScreen from '../pl/AdminScreen'; 
+import AdminScreen from '../pl/AdminScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -164,7 +164,7 @@ function PRLTabs() {
   );
 }
 
-// Tab Navigator for PL (Program Leader with Admin Privileges)
+// Tab Navigator for PL (Program Leader)
 function PLTabs() {
   return (
     <Tab.Navigator
@@ -172,7 +172,6 @@ function PLTabs() {
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
           if (route.name === 'Dashboard') iconName = focused ? 'home' : 'home-outline';
-          else if (route.name === 'Admin Panel') iconName = focused ? 'shield' : 'shield-outline';
           else if (route.name === 'Courses') iconName = focused ? 'book' : 'book-outline';
           else if (route.name === 'Modules') iconName = focused ? 'layers' : 'layers-outline';
           else if (route.name === 'Lecturers') iconName = focused ? 'people' : 'people-outline';
@@ -196,52 +195,19 @@ function PLTabs() {
         },
       })}
     >
-      <Tab.Screen 
-        name="Dashboard" 
-        component={PLDashboard} 
-        options={{ title: 'PL Dashboard' }}
-      />
-      <Tab.Screen 
-        name="Admin Panel" 
-        component={AdminScreen} 
-        options={{ 
-          title: 'Admin Panel',
-          tabBarLabel: 'Admin',
-        }}
-      />
-      <Tab.Screen 
-        name="Courses" 
-        component={PLCourses} 
-      />
-      <Tab.Screen 
-        name="Modules" 
-        component={PLModules} 
-      />
-      <Tab.Screen 
-        name="Lecturers" 
-        component={PLLecturers} 
-      />
-      <Tab.Screen 
-        name="Reports" 
-        component={PLReports} 
-      />
-      <Tab.Screen 
-        name="Monitoring" 
-        component={PLMonitoring} 
-      />
-      <Tab.Screen 
-        name="Ratings" 
-        component={PLRatings} 
-      />
-      <Tab.Screen 
-        name="Profile" 
-        component={PLProfile} 
-      />
+      <Tab.Screen name="Dashboard" component={PLDashboard} />
+      <Tab.Screen name="Courses" component={PLCourses} />
+      <Tab.Screen name="Modules" component={PLModules} />
+      <Tab.Screen name="Lecturers" component={PLLecturers} />
+      <Tab.Screen name="Reports" component={PLReports} />
+      <Tab.Screen name="Monitoring" component={PLMonitoring} />
+      <Tab.Screen name="Ratings" component={PLRatings} />
+      <Tab.Screen name="Profile" component={PLProfile} />
     </Tab.Navigator>
   );
 }
 
-// Main Navigator - FIXED: Now properly registers all screens in Stack Navigator
+// Main Navigator - Routes to specific dashboards based on role
 export default function AppNavigator() {
   const { isAuthenticated, user } = useSelector(state => state.auth);
   
@@ -256,7 +222,7 @@ export default function AppNavigator() {
             <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
           </>
         ) : (
-          // Dashboard screens based on role
+          // Role-specific dashboards - each as its own screen name
           <>
             {user?.role === 'student' && (
               <Stack.Screen name="StudentDashboard" component={StudentTabs} />

@@ -135,16 +135,12 @@ export default function LoginScreen({ navigation }) {
     }
   }, [error, dispatch]);
 
-  // Check if user is already logged in and navigate accordingly
+  // Check if user is already logged in
   useEffect(() => {
     if (user && user.role) {
-      console.log('🔄 [LoginScreen] User already logged in, navigating to:', getDashboardRoute(user.role));
-      // Small delay to ensure navigation is ready
-      setTimeout(() => {
-        navigation.replace(getDashboardRoute(user.role));
-      }, 100);
+      console.log('🔄 [LoginScreen] User already logged in. AppNavigator will handle redirection via state.');
     }
-  }, [user, navigation]);
+  }, [user]);
 
   const onSubmit = async (data) => {
     console.log('📤 [LoginScreen] Form submitted with:', { email: data.email, password: '***' });
@@ -153,11 +149,9 @@ export default function LoginScreen({ navigation }) {
       const result = await dispatch(login(data)).unwrap();
       console.log('✅ [LoginScreen] Login successful:', result);
       
-      // Get user role from result
       const userRole = result.user?.role || result.role;
       console.log('👤 [LoginScreen] User role:', userRole);
       
-      // Validate role exists in our system (should be one of: student, lecturer, prl, pl)
       const validRoles = ['student', 'lecturer', 'prl', 'pl'];
       if (!validRoles.includes(userRole)) {
         console.error('❌ [LoginScreen] Invalid role detected:', userRole);
@@ -165,7 +159,6 @@ export default function LoginScreen({ navigation }) {
         return;
       }
       
-      // Show welcome message with role-specific details
       const welcomeMessage = getWelcomeMessage(userRole, result.user?.name);
       Alert.alert(
         'Welcome!',
@@ -174,18 +167,13 @@ export default function LoginScreen({ navigation }) {
           {
             text: 'Continue',
             onPress: () => {
-              // Navigate to role-specific dashboard
-              const dashboardRoute = getDashboardRoute(userRole);
-              console.log('🚀 [LoginScreen] Navigating to:', dashboardRoute);
-              navigation.replace(dashboardRoute);
+              console.log('🚀 [LoginScreen] Alert dismissed. AppNavigator will now mount the correct dashboard based on the authenticated state.');
             }
           }
         ]
       );
     } catch (err) {
       console.error('❌ [LoginScreen] Login failed:', err);
-      
-      // Error is handled by the useEffect above
     }
   };
 
