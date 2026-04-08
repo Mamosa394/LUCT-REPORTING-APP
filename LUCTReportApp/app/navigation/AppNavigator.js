@@ -4,8 +4,9 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { COLORS } from '../../config/theme';
+import { checkSessionTimeout, loadStoredUser } from '../../src/store/authSlice';
 
 // Import screens
 import LoginScreen from '../auth/LoginScreen';
@@ -180,9 +181,37 @@ function PLTabs() {
 // --- Main App Navigator ---
 
 export default function AppNavigator() {
+  const dispatch = useDispatch();
+  
   // Accessing the auth state from Version A (the slice connected to Firebase)
   const auth = useSelector((state) => state.auth);
   const { isAuthenticated, user, isInitialized } = auth;
+
+  // Load stored user on app start - will NOT auto-authenticate
+  useEffect(() => {
+    console.log('🔄 [AppNavigator] Loading stored user data');
+    dispatch(loadStoredUser());
+  }, [dispatch]);
+
+  // Check session periodically (every minute) when authenticated
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    
+    console.log('⏰ [AppNavigator] Starting session timeout checker');
+    const sessionCheckInterval = setInterval(async () => {
+      const expired = await dispatch(checkSessionTimeout()).unwrap();
+      if (expired) {
+        console.log('⏰ [AppNavigator] Session expired, user will be logged out');
+        // No need to do anything else - the logout action will update Redux state
+        // and the navigation will automatically switch to Login screen
+      }
+    }, 60000); // Check every minute
+    
+    return () => {
+      console.log('🛑 [AppNavigator] Stopping session timeout checker');
+      clearInterval(sessionCheckInterval);
+    };
+  }, [dispatch, isAuthenticated]);
 
   // Log the state transition for debugging
   useEffect(() => {
@@ -194,18 +223,24 @@ export default function AppNavigator() {
     });
   }, [isAuthenticated, user, isInitialized]);
 
+  // Show nothing while initializing (prevents flash of login screen)
+  if (!isInitialized) {
+    console.log('⏳ [AppNavigator] Auth not initialized yet, showing splash');
+    return null; // Or return your splash screen component
+  }
+
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {!isAuthenticated ? (
-          // Auth flow
+          // Auth flow - Always show login screen first
           <>
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
             <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
           </>
         ) : (
-          // Authenticated flow - Switch based on the user object from Version A
+          // Authenticated flow - Switch based on the user role
           <>
             {user?.role === 'student' && (
               <Stack.Screen name="StudentDashboard" component={StudentTabs} />

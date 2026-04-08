@@ -114,9 +114,8 @@ export default function StudentProfile({ navigation }) {
             label="Phone Number"
             value={formData.phone}
             onChangeText={(text) => setFormData({ ...formData, phone: text })}
-            editable={isEditing}
+            editable={false}
             keyboardType="phone-pad"
-            placeholder="Enter your phone number (optional)"
           />
           
           <Input

@@ -1,3 +1,4 @@
+// app/store/authSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { 
@@ -7,6 +8,34 @@ import {
   logLoginAttempt,
   resetPassword 
 } from '../../src/services/firebase';
+
+const SESSION_TIMEOUT = 60 * 60 * 1000; // 1 hour in milliseconds
+const SESSION_STORAGE_KEY = '@session_start_time';
+
+// Helper function to check session validity
+const isSessionValid = async () => {
+  try {
+    const sessionStart = await AsyncStorage.getItem(SESSION_STORAGE_KEY);
+    if (!sessionStart) return false;
+    
+    const now = Date.now();
+    const sessionAge = now - parseInt(sessionStart);
+    return sessionAge < SESSION_TIMEOUT;
+  } catch (error) {
+    console.error('Session check failed:', error);
+    return false;
+  }
+};
+
+// Helper to store session start time
+const setSessionStart = async () => {
+  await AsyncStorage.setItem(SESSION_STORAGE_KEY, Date.now().toString());
+};
+
+// Helper to clear session
+const clearSession = async () => {
+  await AsyncStorage.removeItem(SESSION_STORAGE_KEY);
+};
 
 // Async thunks
 export const login = createAsyncThunk(
@@ -23,12 +52,13 @@ export const login = createAsyncThunk(
       // Ensure phone number is included in the user object
       const userWithPhone = {
         ...result.user,
-        phone: result.user?.phone || '', // Add phone field if missing
+        phone: result.user?.phone || '',
       };
       
       // Store in AsyncStorage
       await AsyncStorage.setItem('token', result.token);
       await AsyncStorage.setItem('user', JSON.stringify(userWithPhone));
+      await setSessionStart(); // Set session start time
       
       // Log successful login
       await logLoginAttempt(email, result.user.role, true);
@@ -51,30 +81,14 @@ export const register = createAsyncThunk(
   async (userData, { rejectWithValue }) => {
     try {
       console.log('🔵 [auth] Register attempt for:', userData.email);
-      console.log('📦 [auth] Register data:', { 
-        ...userData, 
-        password: '***',
-        confirmPassword: '***'
-      });
       
-      // Validate required fields
-      if (!userData.name) {
-        throw new Error('Name is required');
-      }
-      if (!userData.email) {
-        throw new Error('Email is required');
-      }
-      if (!userData.password) {
-        throw new Error('Password is required');
-      }
-      if (userData.password !== userData.confirmPassword) {
-        throw new Error('Passwords do not match');
-      }
-      if (!userData.department) {
-        throw new Error('Department is required');
-      }
+      // Validate required fields (keep existing validation)
+      if (!userData.name) throw new Error('Name is required');
+      if (!userData.email) throw new Error('Email is required');
+      if (!userData.password) throw new Error('Password is required');
+      if (userData.password !== userData.confirmPassword) throw new Error('Passwords do not match');
+      if (!userData.department) throw new Error('Department is required');
       
-      // Role-specific validation
       if (userData.role === 'student' && !userData.studentId) {
         throw new Error('Student ID is required for student accounts');
       }
@@ -85,32 +99,26 @@ export const register = createAsyncThunk(
         throw new Error('Stream/Department is required for Principal Lecturers');
       }
       
-      // Log attempt before registration
       await logRegistrationAttempt(userData, false);
       
       const result = await registerUser(userData);
       
-      // Ensure phone number is included in the user object from registration data
       const userWithPhone = {
         ...result.user,
-        phone: userData.phone || '', // Include phone from registration form
+        phone: userData.phone || '',
       };
       
-      // Store in AsyncStorage
       await AsyncStorage.setItem('token', result.token);
       await AsyncStorage.setItem('user', JSON.stringify(userWithPhone));
+      await setSessionStart(); // Set session start time on registration as well
       
-      // Log successful registration
       await logRegistrationAttempt(userData, true);
       
       console.log('✅ [auth] Registration successful for:', userData.email);
       return { ...result, user: userWithPhone };
     } catch (error) {
       console.error('❌ [auth] Registration failed:', error.message);
-      
-      // Log failed registration
       await logRegistrationAttempt(userData, false, error.message);
-      
       return rejectWithValue(error.message);
     }
   }
@@ -136,9 +144,6 @@ export const resetPasswordThunk = createAsyncThunk(
   async ({ token, password }, { rejectWithValue }) => {
     try {
       console.log('🔵 [auth] Reset password attempt');
-      // Note: Firebase handles password reset via email link, not token
-      // This is handled through the resetPassword function above
-      console.log('✅ [auth] Password reset should be handled via email link');
       return { success: true, message: 'Password reset via email link' };
     } catch (error) {
       console.error('❌ [auth] Reset password failed:', error.message);
@@ -149,9 +154,19 @@ export const resetPasswordThunk = createAsyncThunk(
 
 export const loadStoredUser = createAsyncThunk(
   'auth/loadStoredUser',
-  async (_, { rejectWithValue }) => {
+  async (_, { rejectWithValue, dispatch }) => {
     try {
       console.log('🔵 [auth] Loading stored user');
+      
+      // Check if session is still valid
+      const validSession = await isSessionValid();
+      
+      if (!validSession) {
+        console.log('⚠️ [auth] Session expired, clearing stored data');
+        await AsyncStorage.multiRemove(['token', 'user', SESSION_STORAGE_KEY]);
+        return null;
+      }
+      
       const token = await AsyncStorage.getItem('token');
       const userData = await AsyncStorage.getItem('user');
       
@@ -161,6 +176,7 @@ export const loadStoredUser = createAsyncThunk(
         console.log('📞 [auth] Loaded phone number:', user?.phone);
         return { token, user };
       }
+      
       console.log('ℹ️ [auth] No stored user found');
       return null;
     } catch (error) {
@@ -170,7 +186,6 @@ export const loadStoredUser = createAsyncThunk(
   }
 );
 
-// Update user profile (including phone number)
 export const updateUserProfile = createAsyncThunk(
   'auth/updateProfile',
   async (profileData, { getState, rejectWithValue }) => {
@@ -180,24 +195,36 @@ export const updateUserProfile = createAsyncThunk(
       const { auth } = getState();
       const currentUser = auth.user;
       
-      // Merge current user data with updates
       const updatedUser = {
         ...currentUser,
         ...profileData,
-        phone: profileData.phone || currentUser?.phone || '', // Ensure phone is included
+        phone: profileData.phone || currentUser?.phone || '',
       };
       
-      // Store the updated user in AsyncStorage
       await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
       
       console.log('✅ [auth] Profile updated successfully');
-      console.log('📞 [auth] New phone number:', updatedUser.phone);
-      
       return updatedUser;
     } catch (error) {
       console.error('❌ [auth] Profile update failed:', error.message);
       return rejectWithValue(error.message);
     }
+  }
+);
+
+export const checkSessionTimeout = createAsyncThunk(
+  'auth/checkSessionTimeout',
+  async (_, { getState, dispatch }) => {
+    const { auth } = getState();
+    if (auth.isAuthenticated && auth.user) {
+      const isValid = await isSessionValid();
+      if (!isValid) {
+        console.log('⏰ [auth] Session timeout, logging out');
+        dispatch(logout());
+        return true; // Session expired
+      }
+    }
+    return false; // Session still valid
   }
 );
 
@@ -218,8 +245,8 @@ const authSlice = createSlice({
       state.token = null;
       state.isAuthenticated = false;
       state.error = null;
-      // Clear AsyncStorage
-      AsyncStorage.multiRemove(['token', 'user']);
+      // Clear AsyncStorage including session
+      AsyncStorage.multiRemove(['token', 'user', SESSION_STORAGE_KEY]);
       console.log('✅ [auth] Logout successful');
     },
     clearError: (state) => {
@@ -246,7 +273,6 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.user = action.payload.user;
         state.token = action.payload.token;
-        console.log('📞 [auth] User phone after login:', state.user?.phone);
       })
       .addCase(login.rejected, (state, action) => {
         console.log('❌ [auth] Login rejected:', action.payload);
@@ -262,12 +288,11 @@ const authSlice = createSlice({
         state.error = null;
       })
       .addCase(register.fulfilled, (state, action) => {
-        console.log('✅ [auth] Register fulfilled for:', action.payload.user?.email);
+        console.log('✅ [auth] Register fulfilled');
         state.isLoading = false;
         state.isAuthenticated = true;
         state.user = action.payload.user;
         state.token = action.payload.token;
-        console.log('📞 [auth] User phone after registration:', state.user?.phone);
       })
       .addCase(register.rejected, (state, action) => {
         console.log('❌ [auth] Register rejected:', action.payload);
@@ -309,7 +334,7 @@ const authSlice = createSlice({
         state.error = action.payload;
       })
     
-    // Load Stored User
+    // Load Stored User - MODIFIED to NOT auto-authenticate
     builder
       .addCase(loadStoredUser.pending, (state) => {
         console.log('🔄 [auth] Load stored user pending');
@@ -319,11 +344,16 @@ const authSlice = createSlice({
         console.log('✅ [auth] Load stored user fulfilled');
         state.isLoading = false;
         state.isInitialized = true;
-        if (action.payload) {
+        // ONLY load user if session is valid AND we're not forcing login screen
+        // But we'll handle the actual navigation in AppNavigator
+        if (action.payload && action.payload.user) {
+          // Store but don't set isAuthenticated yet
+          // This allows the login screen to show first
           state.user = action.payload.user;
           state.token = action.payload.token;
-          state.isAuthenticated = true;
-          console.log('📞 [auth] Loaded user phone:', state.user?.phone);
+          // We'll let the AppNavigator decide whether to auto-login
+          // For now, keep isAuthenticated false to show login screen
+          // state.isAuthenticated = false; // <- THIS IS KEY
         }
       })
       .addCase(loadStoredUser.rejected, (state) => {
@@ -343,7 +373,6 @@ const authSlice = createSlice({
         console.log('✅ [auth] Update profile fulfilled');
         state.isLoading = false;
         state.user = action.payload;
-        console.log('📞 [auth] Updated user phone:', state.user?.phone);
       })
       .addCase(updateUserProfile.rejected, (state, action) => {
         console.log('❌ [auth] Update profile rejected:', action.payload);
