@@ -12,22 +12,69 @@ export const loginSchema = z.object({
     .min(6, 'Password must be at least 6 characters'),
 });
 
-// Register Schema with all 5 roles - ENHANCED VERSION
+// Register Schema with all 5 roles - ENHANCED VERSION with phone and better email validation
 export const registerSchema = z.object({
   name: z.string()
     .trim()
     .min(1, 'Full name is required')
-    .min(2, 'Name must be at least 2 characters'),
+    .min(2, 'Name must be at least 2 characters')
+    .max(100, 'Name is too long'),
   
   email: z.string()
     .trim()
     .toLowerCase() // Normalize email to lowercase
     .min(1, 'Email is required')
-    .email('Invalid email address')
-    .regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Please enter a valid email address'),
+    // Enhanced email validation with proper regex
+    .regex(
+      /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+      'Please enter a valid email address (e.g., name@domain.com)'
+    )
+    .refine((email) => {
+      // Additional validation rules:
+      // 1. No spaces
+      if (email.includes(' ')) return false;
+      
+      // 2. Only one @ symbol
+      const atCount = (email.match(/@/g) || []).length;
+      if (atCount !== 1) return false;
+      
+      // 3. Local part (before @) validation
+      const [localPart, domain] = email.split('@');
+      
+      // Local part cannot start or end with dot
+      if (localPart.startsWith('.') || localPart.endsWith('.')) return false;
+      
+      // Local part cannot have consecutive dots
+      if (localPart.includes('..')) return false;
+      
+      // Local part max 64 characters
+      if (localPart.length > 64) return false;
+      
+      // Domain part validation
+      if (!domain || domain.length < 3) return false;
+      
+      // Domain cannot start or end with hyphen
+      if (domain.startsWith('-') || domain.endsWith('-')) return false;
+      
+      // Domain must have at least one dot and TLD at least 2 chars
+      const domainParts = domain.split('.');
+      if (domainParts.length < 2) return false;
+      
+      const tld = domainParts[domainParts.length - 1];
+      if (tld.length < 2) return false;
+      
+      // Domain cannot have consecutive dots
+      if (domain.includes('..')) return false;
+      
+      // Full email max 254 characters
+      if (email.length > 254) return false;
+      
+      return true;
+    }, { message: 'Invalid email format. Example: username@domain.com' }),
   
   password: z.string()
     .min(6, 'Password must be at least 6 characters')
+    .max(100, 'Password is too long')
     .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
     .regex(/[0-9]/, 'Password must contain at least one number'),
   
@@ -42,7 +89,21 @@ export const registerSchema = z.object({
   department: z.string()
     .trim()
     .min(1, 'Department is required')
-    .min(2, 'Department name must be at least 2 characters'),
+    .min(2, 'Department name must be at least 2 characters')
+    .max(100, 'Department name is too long'),
+  
+  // ADDED: Phone number field with validation
+  phone: z.string()
+    .optional()
+    .refine((phone) => {
+      if (!phone || phone.trim() === '') return true; // Optional field
+      // Remove any spaces, dashes, or parentheses for validation
+      const cleanPhone = phone.replace(/[\s\-\(\)]/g, '');
+      // Check if it's a valid phone number format
+      // International format: +26612345678 or local: 12345678
+      const phoneRegex = /^(\+?[0-9]{1,4})?[0-9]{7,15}$/;
+      return phoneRegex.test(cleanPhone);
+    }, { message: 'Please enter a valid phone number (e.g., +26612345678 or 12345678)' }),
   
   studentId: z.string().optional(),
   employeeId: z.string().optional(),
@@ -80,6 +141,12 @@ export const registerSchema = z.object({
           message: "Student ID must be at least 3 characters",
           path: ["studentId"],
         });
+      } else if (data.studentId.trim().length > 20) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Student ID is too long (max 20 characters)",
+          path: ["studentId"],
+        });
       }
       break;
       
@@ -95,6 +162,12 @@ export const registerSchema = z.object({
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: "Employee ID must be at least 3 characters",
+          path: ["employeeId"],
+        });
+      } else if (data.employeeId.trim().length > 20) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Employee ID is too long (max 20 characters)",
           path: ["employeeId"],
         });
       }
@@ -113,6 +186,12 @@ export const registerSchema = z.object({
           message: "Employee ID must be at least 3 characters",
           path: ["employeeId"],
         });
+      } else if (data.employeeId.trim().length > 20) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Employee ID is too long (max 20 characters)",
+          path: ["employeeId"],
+        });
       }
       
       if (!data.stream || data.stream.trim().length === 0) {
@@ -125,6 +204,12 @@ export const registerSchema = z.object({
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: "Stream/Department must be at least 2 characters",
+          path: ["stream"],
+        });
+      } else if (data.stream.trim().length > 50) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Stream/Department is too long (max 50 characters)",
           path: ["stream"],
         });
       }

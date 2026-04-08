@@ -5,12 +5,14 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer, LoadingSpinner, Input, Button, Card } from '../../src/components/UI';
 import { COLORS, spacing, typography } from '../../config/theme';
-import { logout } from '../../src/store/authSlice';
+import { logout, updateUserProfile } from '../../src/store/authSlice';
 
 export default function StudentProfile({ navigation }) {
   const dispatch = useDispatch();
   const { user, isLoading } = useSelector(state => state.auth);
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
@@ -20,9 +22,21 @@ export default function StudentProfile({ navigation }) {
   });
 
   const handleUpdate = async () => {
-    // Update profile logic
-    Alert.alert('Success', 'Profile updated successfully');
-    setIsEditing(false);
+    setIsSaving(true);
+    try {
+      const result = await dispatch(updateUserProfile({
+        name: formData.name,
+        phone: formData.phone,
+        department: formData.department,
+      })).unwrap();
+      
+      Alert.alert('Success', 'Profile updated successfully');
+      setIsEditing(false);
+    } catch (error) {
+      Alert.alert('Error', error || 'Failed to update profile');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleLogout = () => {
@@ -31,7 +45,21 @@ export default function StudentProfile({ navigation }) {
       'Are you sure you want to logout?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Logout', style: 'destructive', onPress: () => dispatch(logout()) },
+        { 
+          text: 'Logout', 
+          style: 'destructive', 
+          onPress: async () => {
+            setIsLoggingOut(true);
+            try {
+              await dispatch(logout()).unwrap();
+              // No need to navigate - AppNavigator will automatically show Login screen
+            } catch (error) {
+              Alert.alert('Error', 'Failed to logout. Please try again.');
+            } finally {
+              setIsLoggingOut(false);
+            }
+          }
+        },
       ]
     );
   };
@@ -78,7 +106,7 @@ export default function StudentProfile({ navigation }) {
             label="Email"
             value={formData.email}
             onChangeText={(text) => setFormData({ ...formData, email: text })}
-            editable={isEditing}
+            editable={false}
             keyboardType="email-address"
           />
           
@@ -88,6 +116,7 @@ export default function StudentProfile({ navigation }) {
             onChangeText={(text) => setFormData({ ...formData, phone: text })}
             editable={isEditing}
             keyboardType="phone-pad"
+            placeholder="Enter your phone number (optional)"
           />
           
           <Input
@@ -107,13 +136,24 @@ export default function StudentProfile({ navigation }) {
               <Button
                 title="Cancel"
                 variant="secondary"
-                onPress={() => setIsEditing(false)}
+                onPress={() => {
+                  setIsEditing(false);
+                  setFormData({
+                    name: user?.name || '',
+                    email: user?.email || '',
+                    phone: user?.phone || '',
+                    studentId: user?.studentId || '',
+                    department: user?.department || '',
+                  });
+                }}
                 style={styles.button}
               />
               <Button
-                title="Save Changes"
+                title={isSaving ? "Saving..." : "Save Changes"}
                 onPress={handleUpdate}
                 style={styles.button}
+                loading={isSaving}
+                disabled={isSaving}
               />
             </View>
           )}
@@ -150,10 +190,12 @@ export default function StudentProfile({ navigation }) {
 
         {/* Logout Button */}
         <Button
-          title="Logout"
+          title={isLoggingOut ? "Logging out..." : "Logout"}
           variant="danger"
           onPress={handleLogout}
           style={styles.logoutButton}
+          loading={isLoggingOut}
+          disabled={isLoggingOut}
         />
       </View>
     </ScreenContainer>

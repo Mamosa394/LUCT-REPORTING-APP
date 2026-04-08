@@ -1,5 +1,5 @@
 ﻿// app/navigation/AppNavigator.js
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -49,7 +49,8 @@ import AdminScreen from '../pl/AdminScreen';
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// Tab Navigator for Student
+// --- Tab Navigators (Unchanged logic, just keeping the structure) ---
+
 function StudentTabs() {
   return (
     <Tab.Navigator
@@ -65,16 +66,9 @@ function StudentTabs() {
         },
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.tabBarInactive,
-        tabBarStyle: {
-          backgroundColor: COLORS.tabBarBackground,
-          borderTopColor: COLORS.border,
-        },
-        headerStyle: {
-          backgroundColor: COLORS.headerBackground,
-        },
-        headerTitleStyle: {
-          color: COLORS.headerText,
-        },
+        tabBarStyle: { backgroundColor: COLORS.tabBarBackground, borderTopColor: COLORS.border },
+        headerStyle: { backgroundColor: COLORS.headerBackground },
+        headerTitleStyle: { color: COLORS.headerText },
       })}
     >
       <Tab.Screen name="Dashboard" component={StudentDashboard} />
@@ -86,7 +80,6 @@ function StudentTabs() {
   );
 }
 
-// Tab Navigator for Lecturer
 function LecturerTabs() {
   return (
     <Tab.Navigator
@@ -103,16 +96,9 @@ function LecturerTabs() {
         },
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.tabBarInactive,
-        tabBarStyle: {
-          backgroundColor: COLORS.tabBarBackground,
-          borderTopColor: COLORS.border,
-        },
-        headerStyle: {
-          backgroundColor: COLORS.headerBackground,
-        },
-        headerTitleStyle: {
-          color: COLORS.headerText,
-        },
+        tabBarStyle: { backgroundColor: COLORS.tabBarBackground, borderTopColor: COLORS.border },
+        headerStyle: { backgroundColor: COLORS.headerBackground },
+        headerTitleStyle: { color: COLORS.headerText },
       })}
     >
       <Tab.Screen name="Dashboard" component={LecturerDashboard} />
@@ -125,7 +111,6 @@ function LecturerTabs() {
   );
 }
 
-// Tab Navigator for PRL
 function PRLTabs() {
   return (
     <Tab.Navigator
@@ -142,16 +127,9 @@ function PRLTabs() {
         },
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.tabBarInactive,
-        tabBarStyle: {
-          backgroundColor: COLORS.tabBarBackground,
-          borderTopColor: COLORS.border,
-        },
-        headerStyle: {
-          backgroundColor: COLORS.headerBackground,
-        },
-        headerTitleStyle: {
-          color: COLORS.headerText,
-        },
+        tabBarStyle: { backgroundColor: COLORS.tabBarBackground, borderTopColor: COLORS.border },
+        headerStyle: { backgroundColor: COLORS.headerBackground },
+        headerTitleStyle: { color: COLORS.headerText },
       })}
     >
       <Tab.Screen name="Dashboard" component={PRLDashboard} />
@@ -164,7 +142,6 @@ function PRLTabs() {
   );
 }
 
-// Tab Navigator for PL (Program Leader)
 function PLTabs() {
   return (
     <Tab.Navigator
@@ -183,16 +160,9 @@ function PLTabs() {
         },
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.tabBarInactive,
-        tabBarStyle: {
-          backgroundColor: COLORS.tabBarBackground,
-          borderTopColor: COLORS.border,
-        },
-        headerStyle: {
-          backgroundColor: COLORS.headerBackground,
-        },
-        headerTitleStyle: {
-          color: COLORS.headerText,
-        },
+        tabBarStyle: { backgroundColor: COLORS.tabBarBackground, borderTopColor: COLORS.border },
+        headerStyle: { backgroundColor: COLORS.headerBackground },
+        headerTitleStyle: { color: COLORS.headerText },
       })}
     >
       <Tab.Screen name="Dashboard" component={PLDashboard} />
@@ -207,22 +177,35 @@ function PLTabs() {
   );
 }
 
-// Main Navigator - Routes to specific dashboards based on role
+// --- Main App Navigator ---
+
 export default function AppNavigator() {
-  const { isAuthenticated, user } = useSelector(state => state.auth);
-  
+  // Accessing the auth state from Version A (the slice connected to Firebase)
+  const auth = useSelector((state) => state.auth);
+  const { isAuthenticated, user, isInitialized } = auth;
+
+  // Log the state transition for debugging
+  useEffect(() => {
+    console.log('🚩 [AppNavigator] Auth State Updated:', {
+      authenticated: isAuthenticated,
+      userEmail: user?.email,
+      role: user?.role,
+      initialized: isInitialized
+    });
+  }, [isAuthenticated, user, isInitialized]);
+
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {!isAuthenticated ? (
-          // Auth screens
+          // Auth flow
           <>
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
             <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
           </>
         ) : (
-          // Role-specific dashboards - each as its own screen name
+          // Authenticated flow - Switch based on the user object from Version A
           <>
             {user?.role === 'student' && (
               <Stack.Screen name="StudentDashboard" component={StudentTabs} />
@@ -235,6 +218,11 @@ export default function AppNavigator() {
             )}
             {user?.role === 'pl' && (
               <Stack.Screen name="PLDashboard" component={PLTabs} />
+            )}
+            
+            {/* Fallback Screen if role is missing but authenticated */}
+            {!user?.role && (
+               <Stack.Screen name="Login" component={LoginScreen} />
             )}
           </>
         )}

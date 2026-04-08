@@ -1,32 +1,17 @@
-import { configureStore, createSlice } from '@reduxjs/toolkit';
-import authReducer from '../../src/store/authSlice'
+import { configureStore } from '@reduxjs/toolkit';
+import authReducer from '../../src/store/authSlice';
+import attendanceReducer from '../../src/store/attendanceSlice';
+import coursesReducer from '../../src/store/courseSlice';
+import monitoringReducer from '../../src/store/monitoringSlice';
 
-const authSlice = createSlice({
-  name: 'auth',
-  initialState: {
-    user: null,
-    role: null, 
-    isAuthenticated: false,
-  },
-  reducers: {
-    setUser: (state, action) => {
-      state.user = action.payload.user;
-      state.role = action.payload.role;
-      state.isAuthenticated = true;
-    },
-    logout: (state) => {
-      state.user = null;
-      state.role = null;
-      state.isAuthenticated = false;
-    },
-  },
-});
-
-export const { setUser, logout } = authSlice.actions;
+// Removed the conflicting local auth slice
 
 const store = configureStore({
   reducer: {
-    auth: authSlice.reducer,
+    auth: authReducer,           // Handles authentication
+    attendance: attendanceReducer, // Handles attendance records and stats
+    courses: coursesReducer,      // Handles courses and modules
+    monitoring: monitoringReducer, // Handles monitoring data and stats
   },
 });
 

@@ -5,12 +5,13 @@ import { useDispatch, useSelector } from 'react-redux';
 import { ScreenContainer, LoadingSpinner, Card } from '../../src/components/UI';
 import { AttendanceCalendar, AttendanceLegend, AttendanceSummaryCard } from '../../src/components/Attendance';
 import { COLORS, spacing, typography } from '../../config/theme';
-import { fetchAttendanceByCourse, fetchStudentAttendanceSummary } from '../../src/store/attendanceSlice';
+import { fetchAttendance, fetchStudentAttendanceSummary } from '../../src/store/attendanceSlice';
 import { fetchCourses } from '../../src/store/courseSlice';
 
 export default function StudentAttendance({ navigation }) {
   const dispatch = useDispatch();
-  const { attendanceRecords, studentSummary, isLoading } = useSelector(state => state.attendance);
+  // FIXED: Changed attendanceRecords to records, studentSummary to stats, isLoading to loading
+  const { records, stats: studentSummary, loading } = useSelector(state => state.attendance);
   const { courses } = useSelector(state => state.courses);
   const { user } = useSelector(state => state.auth);
   const [selectedCourse, setSelectedCourse] = useState(null);
@@ -29,21 +30,28 @@ export default function StudentAttendance({ navigation }) {
 
   useEffect(() => {
     if (selectedCourse) {
-      dispatch(fetchAttendanceByCourse({ courseId: selectedCourse.id }));
+      // FIXED: Changed fetchAttendanceByCourse to fetchAttendance
+      dispatch(fetchAttendance({ 
+        moduleId: selectedCourse.id, 
+        studentId: user?.id,
+        month: new Date().getMonth() + 1,
+        year: new Date().getFullYear()
+      }));
     }
   }, [selectedCourse]);
 
   const handleDayPress = (day) => {
     setSelectedDate(day.dateString);
     // Find attendance record for that day
-    const record = attendanceRecords.find(r => r.date?.split('T')[0] === day.dateString);
+    const record = records?.find(r => r.date?.split('T')[0] === day.dateString);
     if (record && record.studentRecord) {
       // Show attendance details
       console.log('Attendance:', record.studentRecord);
     }
   };
 
-  if (isLoading) {
+  // FIXED: Changed isLoading to loading
+  if (loading) {
     return <LoadingSpinner fullScreen />;
   }
 
@@ -88,7 +96,7 @@ export default function StudentAttendance({ navigation }) {
         {selectedCourse && (
           <>
             <AttendanceCalendar
-              records={attendanceRecords}
+              records={records}
               onDayPress={handleDayPress}
             />
             
@@ -97,14 +105,14 @@ export default function StudentAttendance({ navigation }) {
                 <Text style={styles.dateText}>
                   Selected: {new Date(selectedDate).toLocaleDateString()}
                 </Text>
-                {attendanceRecords.find(r => r.date?.split('T')[0] === selectedDate)?.studentRecord ? (
+                {records?.find(r => r.date?.split('T')[0] === selectedDate)?.studentRecord ? (
                   <Text style={styles.statusText}>
                     Status:{' '}
                     <Text style={[
                       styles.statusValue,
                       { color: COLORS.success }
                     ]}>
-                      {attendanceRecords.find(r => r.date?.split('T')[0] === selectedDate).studentRecord.status.toUpperCase()}
+                      {records.find(r => r.date?.split('T')[0] === selectedDate).studentRecord.status.toUpperCase()}
                     </Text>
                   </Text>
                 ) : (

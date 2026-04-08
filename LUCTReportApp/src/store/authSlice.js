@@ -20,15 +20,21 @@ export const login = createAsyncThunk(
       
       const result = await loginUser(email, password);
       
+      // Ensure phone number is included in the user object
+      const userWithPhone = {
+        ...result.user,
+        phone: result.user?.phone || '', // Add phone field if missing
+      };
+      
       // Store in AsyncStorage
       await AsyncStorage.setItem('token', result.token);
-      await AsyncStorage.setItem('user', JSON.stringify(result.user));
+      await AsyncStorage.setItem('user', JSON.stringify(userWithPhone));
       
       // Log successful login
       await logLoginAttempt(email, result.user.role, true);
       
       console.log('✅ [auth] Login successful for:', email);
-      return result;
+      return { ...result, user: userWithPhone };
     } catch (error) {
       console.error('❌ [auth] Login failed:', error.message);
       
@@ -84,15 +90,21 @@ export const register = createAsyncThunk(
       
       const result = await registerUser(userData);
       
+      // Ensure phone number is included in the user object from registration data
+      const userWithPhone = {
+        ...result.user,
+        phone: userData.phone || '', // Include phone from registration form
+      };
+      
       // Store in AsyncStorage
       await AsyncStorage.setItem('token', result.token);
-      await AsyncStorage.setItem('user', JSON.stringify(result.user));
+      await AsyncStorage.setItem('user', JSON.stringify(userWithPhone));
       
       // Log successful registration
       await logRegistrationAttempt(userData, true);
       
       console.log('✅ [auth] Registration successful for:', userData.email);
-      return result;
+      return { ...result, user: userWithPhone };
     } catch (error) {
       console.error('❌ [auth] Registration failed:', error.message);
       
@@ -146,12 +158,44 @@ export const loadStoredUser = createAsyncThunk(
       if (token && userData) {
         const user = JSON.parse(userData);
         console.log('✅ [auth] Stored user loaded:', user?.email);
+        console.log('📞 [auth] Loaded phone number:', user?.phone);
         return { token, user };
       }
       console.log('ℹ️ [auth] No stored user found');
       return null;
     } catch (error) {
       console.error('❌ [auth] Failed to load stored user:', error.message);
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+// Update user profile (including phone number)
+export const updateUserProfile = createAsyncThunk(
+  'auth/updateProfile',
+  async (profileData, { getState, rejectWithValue }) => {
+    try {
+      console.log('🔵 [auth] Updating user profile:', profileData);
+      
+      const { auth } = getState();
+      const currentUser = auth.user;
+      
+      // Merge current user data with updates
+      const updatedUser = {
+        ...currentUser,
+        ...profileData,
+        phone: profileData.phone || currentUser?.phone || '', // Ensure phone is included
+      };
+      
+      // Store the updated user in AsyncStorage
+      await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+      
+      console.log('✅ [auth] Profile updated successfully');
+      console.log('📞 [auth] New phone number:', updatedUser.phone);
+      
+      return updatedUser;
+    } catch (error) {
+      console.error('❌ [auth] Profile update failed:', error.message);
       return rejectWithValue(error.message);
     }
   }
@@ -202,6 +246,7 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.user = action.payload.user;
         state.token = action.payload.token;
+        console.log('📞 [auth] User phone after login:', state.user?.phone);
       })
       .addCase(login.rejected, (state, action) => {
         console.log('❌ [auth] Login rejected:', action.payload);
@@ -222,6 +267,7 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.user = action.payload.user;
         state.token = action.payload.token;
+        console.log('📞 [auth] User phone after registration:', state.user?.phone);
       })
       .addCase(register.rejected, (state, action) => {
         console.log('❌ [auth] Register rejected:', action.payload);
@@ -277,12 +323,32 @@ const authSlice = createSlice({
           state.user = action.payload.user;
           state.token = action.payload.token;
           state.isAuthenticated = true;
+          console.log('📞 [auth] Loaded user phone:', state.user?.phone);
         }
       })
       .addCase(loadStoredUser.rejected, (state) => {
         console.log('❌ [auth] Load stored user rejected');
         state.isLoading = false;
         state.isInitialized = true;
+      })
+    
+    // Update User Profile
+    builder
+      .addCase(updateUserProfile.pending, (state) => {
+        console.log('🔄 [auth] Update profile pending');
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(updateUserProfile.fulfilled, (state, action) => {
+        console.log('✅ [auth] Update profile fulfilled');
+        state.isLoading = false;
+        state.user = action.payload;
+        console.log('📞 [auth] Updated user phone:', state.user?.phone);
+      })
+      .addCase(updateUserProfile.rejected, (state, action) => {
+        console.log('❌ [auth] Update profile rejected:', action.payload);
+        state.isLoading = false;
+        state.error = action.payload;
       });
   },
 });

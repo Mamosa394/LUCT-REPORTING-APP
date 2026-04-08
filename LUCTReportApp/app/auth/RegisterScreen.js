@@ -38,6 +38,7 @@ export default function RegisterScreen({ navigation }) {
       studentId: '', 
       employeeId: '',
       stream: '',
+      phone: '', // ADDED phone field
     },
   });
 
@@ -304,6 +305,23 @@ export default function RegisterScreen({ navigation }) {
             )}
           />
 
+          {/* Phone Number Field - Optional for all users */}
+          <Controller
+            control={control}
+            name="phone"
+            render={({ field: { onChange, value } }) => (
+              <Input
+                label="Phone Number (Optional)"
+                value={value}
+                onChangeText={onChange}
+                placeholder="e.g., +266 1234 5678"
+                keyboardType="phone-pad"
+                error={errors.phone?.message}
+                leftIcon={<Ionicons name="call-outline" size={20} color={COLORS.textSecondary} />}
+              />
+            )}
+          />
+
           <Controller
             control={control}
             name="department"
@@ -312,7 +330,7 @@ export default function RegisterScreen({ navigation }) {
                 label="Faculty"
                 value={value}
                 onChangeText={onChange}
-                placeholder="e.g.FICT"
+                placeholder="e.g., FICT"
                 error={errors.department?.message}
                 leftIcon={<Ionicons name="business-outline" size={20} color={COLORS.textSecondary} />}
               />

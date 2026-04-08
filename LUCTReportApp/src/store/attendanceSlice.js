@@ -53,6 +53,27 @@ export const fetchAttendanceStats = createAsyncThunk(
   }
 );
 
+// NEW: fetchStudentAttendanceSummary - alias for fetchAttendanceStats to match StudentDashboard.js import
+export const fetchStudentAttendanceSummary = createAsyncThunk(
+  'attendance/studentSummary',
+  async ({ studentId, moduleId, month, year }, { rejectWithValue }) => {
+    try {
+      // If the API has a specific endpoint for student summary, use this:
+      // const response = await api.get('/attendance/student-summary', {
+      //   params: { studentId, moduleId, month, year },
+      // });
+      
+      // Otherwise, reuse fetchAttendanceStats logic (without month/year if not supported)
+      const response = await api.get('/attendance/stats', {
+        params: { moduleId, studentId },
+      });
+      return response.data.stats;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 const attendanceSlice = createSlice({
   name: 'attendance',
   initialState: {
@@ -116,6 +137,16 @@ const attendanceSlice = createSlice({
 
       .addCase(fetchAttendanceStats.fulfilled, (state, action) => {
         state.stats = action.payload;
+      })
+      
+      // NEW: handle fetchStudentAttendanceSummary
+      .addCase(fetchStudentAttendanceSummary.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(fetchStudentAttendanceSummary.fulfilled, (state, action) => {
+        state.loading = false;
+        state.stats = action.payload;
+      })
+      .addCase(fetchStudentAttendanceSummary.rejected, (state, action) => {
+        state.loading = false; state.error = action.payload;
       });
   },
 });

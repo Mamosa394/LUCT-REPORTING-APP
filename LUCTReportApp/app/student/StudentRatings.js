@@ -1,31 +1,38 @@
 // app/student/Ratings.js
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'; // ADDED Text import
 import { useDispatch, useSelector } from 'react-redux';
 import { ScreenContainer, LoadingSpinner, AppModal, Card } from '../../src/components/UI';
 import { RatingForm, RatingCard, RatingSummary } from '../../src/components/Ratings';
 import { COLORS, spacing, typography } from '../../config/theme';
-import { fetchRatings, submitRating } from '../../src/store/monitoringSlice';
+// FIXED: Remove non-existent imports - these don't exist in monitoringSlice
+// import { fetchRatings, submitRating } from '../../src/store/monitoringSlice';
 import { fetchCourses } from '../../src/store/courseSlice';
 
 export default function StudentRatings({ navigation }) {
   const dispatch = useDispatch();
-  const { ratings, averages, isLoading } = useSelector(state => state.monitoring);
-  const { courses } = useSelector(state => state.courses);
-  const { user } = useSelector(state => state.auth);
+  // FIXED: Remove non-existent state properties
+  const { isLoading } = useSelector(state => state.monitoring || { isLoading: false });
+  const { courses } = useSelector(state => state.courses || { courses: [] });
+  const { user } = useSelector(state => state.auth || { user: null });
   const [showRatingForm, setShowRatingForm] = useState(false);
   const [selectedLecturer, setSelectedLecturer] = useState(null);
   const [selectedCourse, setSelectedCourse] = useState(null);
+  const [ratings, setRatings] = useState([]); // Local state for ratings
 
   useEffect(() => {
     loadData();
   }, []);
 
   const loadData = async () => {
-    await Promise.all([
-      dispatch(fetchRatings({ studentId: user?.id })),
-      dispatch(fetchCourses()),
-    ]);
+    try {
+      await dispatch(fetchCourses());
+      // TODO: Add API call to fetch ratings when backend is ready
+      // For now, using mock data or empty array
+      setRatings([]);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    }
   };
 
   const handleRateLecturer = (lecturer, course) => {
@@ -35,9 +42,10 @@ export default function StudentRatings({ navigation }) {
   };
 
   const handleSubmitRating = async (ratingData) => {
-    await dispatch(submitRating(ratingData));
+    // TODO: Implement submit rating API call
+    console.log('Submitting rating:', ratingData);
     setShowRatingForm(false);
-    loadData();
+    await loadData();
   };
 
   if (isLoading) {
@@ -50,7 +58,7 @@ export default function StudentRatings({ navigation }) {
         {/* My Ratings Section */}
         <Card style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>My Ratings</Text>
-          {ratings?.length > 0 ? (
+          {ratings && ratings.length > 0 ? (
             ratings.map((rating) => (
               <RatingCard key={rating.id} rating={rating} />
             ))
@@ -62,21 +70,25 @@ export default function StudentRatings({ navigation }) {
         {/* Rate Lecturers Section */}
         <Card style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Rate Your Lecturers</Text>
-          {courses?.map((course) => (
-            course.lecturer && (
-              <TouchableOpacity
-                key={course.id}
-                style={styles.lecturerItem}
-                onPress={() => handleRateLecturer(course.lecturer, course)}
-              >
-                <View>
-                  <Text style={styles.lecturerName}>{course.lecturer.name}</Text>
-                  <Text style={styles.courseName}>{course.name}</Text>
-                </View>
-                <Text style={styles.rateButton}>Rate →</Text>
-              </TouchableOpacity>
-            )
-          ))}
+          {courses && courses.length > 0 ? (
+            courses.map((course) => (
+              course.lecturer && (
+                <TouchableOpacity
+                  key={course.id}
+                  style={styles.lecturerItem}
+                  onPress={() => handleRateLecturer(course.lecturer, course)}
+                >
+                  <View>
+                    <Text style={styles.lecturerName}>{course.lecturer.name}</Text>
+                    <Text style={styles.courseName}>{course.name}</Text>
+                  </View>
+                  <Text style={styles.rateButton}>Rate →</Text>
+                </TouchableOpacity>
+              )
+            ))
+          ) : (
+            <Text style={styles.emptyText}>No courses available</Text>
+          )}
         </Card>
 
         {/* Rating Form Modal */}
