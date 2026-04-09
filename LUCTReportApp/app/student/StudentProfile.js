@@ -5,7 +5,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer, LoadingSpinner, Input, Button, Card } from '../../src/components/UI';
 import { COLORS, spacing, typography } from '../../config/theme';
-import { logout, updateUserProfile } from '../../src/store/authSlice';
+// Import logoutUser (the async thunk) instead of the synchronous logout action
+import { logoutUser, updateUserProfile } from '../../src/store/authSlice';
 
 export default function StudentProfile({ navigation }) {
   const dispatch = useDispatch();
@@ -51,9 +52,11 @@ export default function StudentProfile({ navigation }) {
           onPress: async () => {
             setIsLoggingOut(true);
             try {
-              await dispatch(logout()).unwrap();
+              // Using logoutUser thunk allows .unwrap() to resolve correctly
+              await dispatch(logoutUser()).unwrap();
               // No need to navigate - AppNavigator will automatically show Login screen
             } catch (error) {
+              console.error('Logout error:', error);
               Alert.alert('Error', 'Failed to logout. Please try again.');
             } finally {
               setIsLoggingOut(false);
