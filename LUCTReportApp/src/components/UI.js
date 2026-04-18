@@ -269,7 +269,9 @@ export function StatsCard({ title, value, icon, trend, trendValue, color }) {
     <View style={[styles.statsCard, { borderTopColor: color || COLORS.primary }]}>
       <View style={styles.statsHeader}>
         <Text style={styles.statsTitle}>{title}</Text>
-        {icon && <View style={styles.statsIcon}>{icon}</View>}
+        {icon && <View style={styles.statsIcon}>
+        <Text>{icon}</Text>
+        </View>}
       </View>
       <Text style={[styles.statsValue, { color: color || COLORS.text }]}>{value}</Text>
       {trend && (
