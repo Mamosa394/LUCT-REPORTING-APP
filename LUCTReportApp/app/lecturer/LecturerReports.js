@@ -74,11 +74,20 @@ export default function LecturerReports({ navigation }) {
     <ScreenContainer scrollable={false}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Reports</Text>
-        <Button
-          title="+ New Report"
-          onPress={() => setShowSubmitModal(true)}
-          size="sm"
-        />
+        <View style={styles.headerButtons}>
+          <TouchableOpacity 
+            style={styles.weeklyReportButton}
+            onPress={() => navigation.navigate('LecturerReportingForm')}
+          >
+            <Ionicons name="document-text-outline" size={20} color={COLORS.buttonPrimaryText} />
+            <Text style={styles.weeklyReportText}>Weekly Report</Text>
+          </TouchableOpacity>
+          <Button
+            title="+ New"
+            onPress={() => setShowSubmitModal(true)}
+            size="sm"
+          />
+        </View>
       </View>
       
       <ReportStats stats={reportStats} />
@@ -267,6 +276,25 @@ const styles = StyleSheet.create({
   headerTitle: {
     ...typography.h2,
     color: COLORS.text,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  weeklyReportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.success,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: 8,
+    marginRight: spacing.sm,
+  },
+  weeklyReportText: {
+    ...typography.bodySmall,
+    color: COLORS.buttonPrimaryText,
+    marginLeft: spacing.xs,
+    fontWeight: '600',
   },
   typeSelector: {
     marginBottom: spacing.md,
