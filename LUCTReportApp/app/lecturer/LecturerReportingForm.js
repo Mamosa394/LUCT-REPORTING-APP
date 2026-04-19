@@ -8,11 +8,13 @@ import {
   TouchableOpacity,
   Alert,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  StatusBar
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
-import { ScreenContainer, LoadingSpinner, Input, Button, Card } from '../../src/components/UI';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { LoadingSpinner, Input, Button, Card } from '../../src/components/UI';
 import { COLORS, spacing, typography } from '../../config/theme';
 import { fetchCourses } from '../../src/store/courseSlice';
 import { submitReport } from '../../src/store/monitoringSlice';
@@ -126,12 +128,13 @@ export default function LecturerReportingForm({ navigation, route }) {
     try {
       const reportData = {
         ...formData,
-        submittedBy: user?.id || user?.uid,
-        submittedByName: user?.name, 
-        submittedAt: new Date().toISOString(),
+        submittedBy: user?.employeeId || user?.id || user?.uid,
+        employeeId: user?.employeeId, 
+        authorName: user?.name || 'Lecturer', 
+        createdAt: new Date().toISOString(), 
+        description: formData.topicTaught, 
         type: 'lecturer_weekly_report',
         status: 'pending',
-        // Format for backend
         actualStudentsPresent: parseInt(formData.actualStudentsPresent),
         totalRegisteredStudents: parseInt(formData.totalRegisteredStudents),
         dateOfLecture: formData.dateOfLecture.toISOString(),
@@ -158,15 +161,20 @@ export default function LecturerReportingForm({ navigation, route }) {
     return <LoadingSpinner fullScreen />;
   }
 
+  // ✅ REPLACED ScreenContainer with SafeAreaView + View
   return (
-    <ScreenContainer>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
+        {/* ✅ Single ScrollView - no nesting issues */}
         <ScrollView 
-          showsVerticalScrollIndicator={false}
+          showsVerticalScrollIndicator={true}
           contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
         >
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Weekly Lecture Report</Text>
@@ -388,14 +396,17 @@ export default function LecturerReportingForm({ navigation, route }) {
           onChange={handleTimeChange}
         />
       )}
-    </ScreenContainer>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  container: {
+    flex: 1,
   },
   scrollContent: {
     padding: spacing.md,

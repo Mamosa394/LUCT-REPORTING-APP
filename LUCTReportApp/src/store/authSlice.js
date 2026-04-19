@@ -1,3 +1,4 @@
+// src/store/authSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { 
@@ -7,6 +8,8 @@ import {
   logLoginAttempt,
   resetPassword 
 } from '../../src/services/firebase';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db } from '../../config/firebase';
 
 const SESSION_TIMEOUT = 60 * 60 * 1000; // 1 hour in milliseconds
 const SESSION_STORAGE_KEY = '@session_start_time';
@@ -29,6 +32,116 @@ const isSessionValid = async () => {
 const setSessionStart = async () => {
   await AsyncStorage.setItem(SESSION_STORAGE_KEY, Date.now().toString());
 };
+
+// ✅ NEW: Fetch users from Firestore
+export const fetchUsers = createAsyncThunk(
+  'auth/fetchUsers',
+  async (filters = {}, { rejectWithValue }) => {
+    try {
+      console.log('🔵 [auth] Fetching users with filters:', filters);
+      
+      const usersRef = collection(db, 'users');
+      let q = query(usersRef);
+      
+      // Apply filters
+      if (filters.role) {
+        q = query(usersRef, where('role', '==', filters.role));
+      }
+      if (filters.department) {
+        q = query(usersRef, where('department', '==', filters.department));
+      }
+      if (filters.stream) {
+        q = query(usersRef, where('stream', '==', filters.stream));
+      }
+      if (filters.employeeId) {
+        q = query(usersRef, where('employeeId', '==', filters.employeeId));
+      }
+      
+      const snapshot = await getDocs(q);
+      const users = [];
+      snapshot.forEach(doc => {
+        users.push({ id: doc.id, ...doc.data() });
+      });
+      
+      console.log(`✅ [auth] Fetched ${users.length} users`);
+      return users;
+    } catch (error) {
+      console.error('❌ [auth] Failed to fetch users:', error.message);
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+// ✅ NEW: Fetch single user by ID
+export const fetchUserById = createAsyncThunk(
+  'auth/fetchUserById',
+  async (userId, { rejectWithValue }) => {
+    try {
+      console.log('🔵 [auth] Fetching user by ID:', userId);
+      
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('uid', '==', userId));
+      const snapshot = await getDocs(q);
+      
+      if (snapshot.empty) {
+        // Try by employeeId if uid doesn't match
+        const q2 = query(usersRef, where('employeeId', '==', userId));
+        const snapshot2 = await getDocs(q2);
+        
+        if (snapshot2.empty) {
+          throw new Error('User not found');
+        }
+        
+        const userDoc = snapshot2.docs[0];
+        console.log('✅ [auth] User found by employeeId');
+        return { id: userDoc.id, ...userDoc.data() };
+      }
+      
+      const userDoc = snapshot.docs[0];
+      console.log('✅ [auth] User found by uid');
+      return { id: userDoc.id, ...userDoc.data() };
+    } catch (error) {
+      console.error('❌ [auth] Failed to fetch user:', error.message);
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+// ✅ NEW: Fetch lecturers (users with role='lecturer')
+export const fetchLecturers = createAsyncThunk(
+  'auth/fetchLecturers',
+  async (filters = {}, { rejectWithValue }) => {
+    try {
+      console.log('🔵 [auth] Fetching lecturers with filters:', filters);
+      
+      const usersRef = collection(db, 'users');
+      const constraints = [where('role', '==', 'lecturer')];
+      
+      if (filters.department) {
+        constraints.push(where('department', '==', filters.department));
+      }
+      if (filters.stream) {
+        constraints.push(where('stream', '==', filters.stream));
+      }
+      if (filters.faculty) {
+        constraints.push(where('faculty', '==', filters.faculty));
+      }
+      
+      const q = query(usersRef, ...constraints);
+      const snapshot = await getDocs(q);
+      const lecturers = [];
+      snapshot.forEach(doc => {
+        lecturers.push({ id: doc.id, ...doc.data() });
+      });
+      
+      console.log(`✅ [auth] Fetched ${lecturers.length} lecturers`);
+      return lecturers;
+    } catch (error) {
+      console.error('❌ [auth] Failed to fetch lecturers:', error.message);
+      return rejectWithValue(error.message);
+    }
+  }
+);
 
 // Async thunks
 export const login = createAsyncThunk(
@@ -226,6 +339,11 @@ const authSlice = createSlice({
     error: null,
     isAuthenticated: false,
     isInitialized: false,
+    // ✅ NEW: Users state
+    users: [],
+    lecturers: [],
+    selectedUser: null,
+    usersLoading: false,
   },
   reducers: {
     // Pure reducer for state synchronization
@@ -235,6 +353,9 @@ const authSlice = createSlice({
       state.token = null;
       state.isAuthenticated = false;
       state.error = null;
+      state.users = [];
+      state.lecturers = [];
+      state.selectedUser = null;
     },
     clearError: (state) => {
       state.error = null;
@@ -243,10 +364,18 @@ const authSlice = createSlice({
       state.user = action.payload;
       state.isAuthenticated = true;
     },
+    // ✅ NEW: Clear selected user
+    clearSelectedUser: (state) => {
+      state.selectedUser = null;
+    },
   },
   extraReducers: (builder) => {
     builder
-      .addCase(login.pending, (state) => { state.isLoading = true; state.error = null; })
+      // Login
+      .addCase(login.pending, (state) => { 
+        state.isLoading = true; 
+        state.error = null; 
+      })
       .addCase(login.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isAuthenticated = true;
@@ -257,24 +386,129 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
+      
+      // Register
+      .addCase(register.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(register.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isAuthenticated = true;
+        state.user = action.payload.user;
+        state.token = action.payload.token;
+      })
+      .addCase(register.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      
+      // Load Stored User
+      .addCase(loadStoredUser.pending, (state) => {
+        state.isLoading = true;
+      })
       .addCase(loadStoredUser.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isInitialized = true;
         if (action.payload && action.payload.user) {
           state.user = action.payload.user;
           state.token = action.payload.token;
+          state.isAuthenticated = true;
         }
       })
       .addCase(loadStoredUser.rejected, (state) => {
         state.isLoading = false;
         state.isInitialized = true;
       })
+      
+      // Update Profile
+      .addCase(updateUserProfile.pending, (state) => {
+        state.isLoading = true;
+      })
       .addCase(updateUserProfile.fulfilled, (state, action) => {
         state.isLoading = false;
         state.user = action.payload;
+      })
+      .addCase(updateUserProfile.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      
+      // Forgot Password
+      .addCase(forgotPassword.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(forgotPassword.fulfilled, (state) => {
+        state.isLoading = false;
+      })
+      .addCase(forgotPassword.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      
+      // ✅ NEW: Fetch Users
+      .addCase(fetchUsers.pending, (state) => {
+        state.usersLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchUsers.fulfilled, (state, action) => {
+        state.usersLoading = false;
+        state.users = action.payload;
+      })
+      .addCase(fetchUsers.rejected, (state, action) => {
+        state.usersLoading = false;
+        state.error = action.payload;
+      })
+      
+      // ✅ NEW: Fetch User By ID
+      .addCase(fetchUserById.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(fetchUserById.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.selectedUser = action.payload;
+      })
+      .addCase(fetchUserById.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      
+      // ✅ NEW: Fetch Lecturers
+      .addCase(fetchLecturers.pending, (state) => {
+        state.usersLoading = true;
+      })
+      .addCase(fetchLecturers.fulfilled, (state, action) => {
+        state.usersLoading = false;
+        state.lecturers = action.payload;
+      })
+      .addCase(fetchLecturers.rejected, (state, action) => {
+        state.usersLoading = false;
+        state.error = action.payload;
+      })
+      
+      // Logout User
+      .addCase(logoutUser.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(logoutUser.fulfilled, (state) => {
+        state.isLoading = false;
+      })
+      .addCase(logoutUser.rejected, (state) => {
+        state.isLoading = false;
       });
   },
 });
 
-export const { logout, clearError, setUser } = authSlice.actions;
+// ✅ Export actions
+export const { logout, clearError, setUser, clearSelectedUser } = authSlice.actions;
+
+// ✅ Selectors
+export const selectUsers = (state) => state.auth?.users || [];
+export const selectLecturers = (state) => state.auth?.lecturers || [];
+export const selectSelectedUser = (state) => state.auth?.selectedUser || null;
+export const selectUsersLoading = (state) => state.auth?.usersLoading || false;
+export const selectIsAuthenticated = (state) => state.auth?.isAuthenticated || false;
+export const selectCurrentUser = (state) => state.auth?.user || null;
+
 export default authSlice.reducer;

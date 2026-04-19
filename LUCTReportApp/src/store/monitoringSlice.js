@@ -11,6 +11,7 @@ import {
   updateDoc,
   orderBy,
   limit,
+  serverTimestamp,
   Timestamp
 } from 'firebase/firestore';
 import { db } from '../../config/firebase';
@@ -25,27 +26,56 @@ export const fetchReports = createAsyncThunk(
   async (params = {}, { rejectWithValue }) => {
     try {
       const reportsRef = collection(db, 'reports');
-      let q = reportsRef;
+      let q = query(reportsRef);
       
-      // Apply filters
-      if (params.submittedBy) {
-        q = query(q, where('submittedBy', '==', params.submittedBy));
+      const constraints = [];
+      
+      // Apply filters - Check multiple fields for lecturer ID
+      if (params.lecturerId) {
+        // Support both submittedBy and lecturerEmployeeId fields
+        constraints.push(where('submittedBy', '==', params.lecturerId));
+        // Note: Firestore doesn't support OR queries directly,
+        // so we query by the primary field and filter client-side if needed
+      } else if (params.submittedBy) {
+        constraints.push(where('submittedBy', '==', params.submittedBy));
       }
+      
       if (params.courseId) {
-        q = query(q, where('courseId', '==', params.courseId));
-      }
-      if (params.status) {
-        q = query(q, where('status', '==', params.status));
+        constraints.push(where('courseId', '==', params.courseId));
       }
       
-      // Order by createdAt descending
-      q = query(q, orderBy('createdAt', 'desc'));
+      if (params.status) {
+        constraints.push(where('status', '==', params.status));
+      }
+      
+      // Add constraints and order by
+      if (constraints.length > 0) {
+        q = query(reportsRef, ...constraints, orderBy('createdAt', 'desc'));
+      } else {
+        q = query(reportsRef, orderBy('createdAt', 'desc'));
+      }
       
       const snapshot = await getDocs(q);
-      const reports = [];
+      let reports = [];
       snapshot.forEach(doc => {
-        reports.push({ id: doc.id, ...doc.data() });
+        const data = doc.data();
+        reports.push({ 
+          id: doc.id, 
+          ...data,
+          // Ensure dates are properly formatted
+          createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
+          updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt,
+        });
       });
+      
+      // Client-side filtering for OR condition (check both ID fields)
+      if (params.lecturerId) {
+        reports = reports.filter(r => 
+          r.submittedBy === params.lecturerId || 
+          r.lecturerEmployeeId === params.lecturerId ||
+          r.lecturerId === params.lecturerId
+        );
+      }
       
       return { reports, total: reports.length };
     } catch (error) {
@@ -58,9 +88,21 @@ export const fetchReports = createAsyncThunk(
 // Submit report to Firestore
 export const submitReport = createAsyncThunk(
   'monitoring/submitReport',
-  async (reportData, { rejectWithValue }) => {
+  async (reportData, { rejectWithValue, getState }) => {
     try {
       console.log('📝 Submitting report to Firestore:', reportData);
+      
+      // Get current user from state to ensure proper employee ID
+      const state = getState();
+      const user = state.auth?.user;
+      
+      // Determine the lecturer's employee ID (priority: employeeId > id > uid)
+      const employeeId = reportData.submittedBy || 
+                        reportData.lecturerEmployeeId || 
+                        user?.employeeId || 
+                        user?.id || 
+                        user?.uid || 
+                        '';
       
       // Prepare report data for Firestore
       const firestoreData = {
@@ -69,7 +111,7 @@ export const submitReport = createAsyncThunk(
         className: reportData.className || '',
         courseName: reportData.courseName || '',
         courseCode: reportData.courseCode || '',
-        lecturerName: reportData.lecturerName || '',
+        lecturerName: reportData.lecturerName || user?.displayName || user?.name || '',
         
         // Schedule Info
         weekOfReporting: reportData.weekOfReporting || '',
@@ -78,31 +120,47 @@ export const submitReport = createAsyncThunk(
         venue: reportData.venue || '',
         
         // Attendance Info
-        totalRegisteredStudents: reportData.totalRegisteredStudents || 0,
-        actualStudentsPresent: reportData.actualStudentsPresent || 0,
+        totalRegisteredStudents: Number(reportData.totalRegisteredStudents) || 0,
+        actualStudentsPresent: Number(reportData.actualStudentsPresent) || 0,
         attendanceRate: reportData.attendanceRate || 
-          ((reportData.actualStudentsPresent / reportData.totalRegisteredStudents) * 100).toFixed(1),
+          (reportData.actualStudentsPresent && reportData.totalRegisteredStudents
+            ? ((reportData.actualStudentsPresent / reportData.totalRegisteredStudents) * 100).toFixed(1)
+            : '0.0'),
         
         // Teaching Content
         topicTaught: reportData.topicTaught || '',
         learningOutcomes: reportData.learningOutcomes || '',
         lecturerRecommendations: reportData.lecturerRecommendations || '',
         
-        // Metadata
-        submittedBy: reportData.submittedBy || '',
-        type: reportData.type || 'lecturer_weekly_report',
+        // Description (for simple reports)
+        description: reportData.description || '',
+        title: reportData.title || '',
+        
+        // Metadata - IMPORTANT: Store employee ID in multiple fields for flexible querying
+        submittedBy: employeeId,
+        lecturerEmployeeId: employeeId,
+        lecturerId: employeeId,
+        lecturerName: reportData.lecturerName || user?.displayName || user?.name || 'Unknown Lecturer',
+        
+        // Report type and status
+        type: reportData.type || 'weekly',
         status: 'pending',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        
+        // Timestamps
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       };
       
       // Add to Firestore
       const docRef = await addDoc(collection(db, 'reports'), firestoreData);
       console.log('✅ Report saved to Firestore with ID:', docRef.id);
       
+      // Return with client-side timestamp for immediate display
       const savedReport = {
         id: docRef.id,
-        ...firestoreData
+        ...firestoreData,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
       
       return {
@@ -120,20 +178,38 @@ export const submitReport = createAsyncThunk(
 // Update report status in Firestore
 export const updateReportStatus = createAsyncThunk(
   'monitoring/updateReportStatus',
-  async ({ reportId, status, feedback }, { rejectWithValue }) => {
+  async ({ reportId, status, feedback, reviewedBy }, { rejectWithValue, getState }) => {
     try {
+      const state = getState();
+      const user = state.auth?.user;
+      
       const reportRef = doc(db, 'reports', reportId);
       
-      await updateDoc(reportRef, {
+      const updateData = {
         status,
-        feedback: feedback || '',
-        reviewedAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      });
+        updatedAt: serverTimestamp(),
+      };
+      
+      if (feedback) {
+        updateData.feedback = feedback;
+      }
+      
+      if (reviewedBy || user) {
+        updateData.reviewedBy = reviewedBy || user?.employeeId || user?.id || user?.uid;
+        updateData.reviewedByName = user?.displayName || user?.name || 'Admin';
+        updateData.reviewedAt = serverTimestamp();
+      }
+      
+      await updateDoc(reportRef, updateData);
       
       // Get updated report
       const updatedDoc = await getDoc(reportRef);
-      const updatedReport = { id: updatedDoc.id, ...updatedDoc.data() };
+      const updatedReport = { 
+        id: updatedDoc.id, 
+        ...updatedDoc.data(),
+        createdAt: updatedDoc.data().createdAt?.toDate?.()?.toISOString() || updatedDoc.data().createdAt,
+        updatedAt: new Date().toISOString(),
+      };
       
       return {
         report: updatedReport,
@@ -159,11 +235,71 @@ export const fetchReportById = createAsyncThunk(
         throw new Error('Report not found');
       }
       
+      const data = reportDoc.data();
       return {
-        report: { id: reportDoc.id, ...reportDoc.data() }
+        report: { 
+          id: reportDoc.id, 
+          ...data,
+          createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
+          updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt,
+        }
       };
     } catch (error) {
       console.error('❌ Error fetching report:', error);
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+// Fetch lecturer's report statistics
+export const fetchLecturerReportStats = createAsyncThunk(
+  'monitoring/fetchLecturerReportStats',
+  async (lecturerId, { rejectWithValue }) => {
+    try {
+      const reportsRef = collection(db, 'reports');
+      
+      // Query reports by lecturer ID (check multiple possible fields)
+      const q = query(
+        reportsRef, 
+        where('submittedBy', '==', lecturerId)
+      );
+      
+      const snapshot = await getDocs(q);
+      let reports = [];
+      snapshot.forEach(doc => {
+        reports.push({ id: doc.id, ...doc.data() });
+      });
+      
+      // Also check for reports with lecturerEmployeeId field
+      const q2 = query(
+        reportsRef,
+        where('lecturerEmployeeId', '==', lecturerId)
+      );
+      
+      const snapshot2 = await getDocs(q2);
+      const reportIds = new Set(reports.map(r => r.id));
+      snapshot2.forEach(doc => {
+        if (!reportIds.has(doc.id)) {
+          reports.push({ id: doc.id, ...doc.data() });
+        }
+      });
+      
+      const stats = {
+        total: reports.length,
+        pending: reports.filter(r => r.status === 'pending').length,
+        approved: reports.filter(r => r.status === 'approved').length,
+        rejected: reports.filter(r => r.status === 'rejected').length,
+        thisWeek: reports.filter(r => {
+          const created = r.createdAt?.toDate?.() || new Date(r.createdAt);
+          const now = new Date();
+          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          return created >= weekAgo;
+        }).length,
+      };
+      
+      return stats;
+    } catch (error) {
+      console.error('❌ Error fetching lecturer report stats:', error);
       return rejectWithValue(error.message);
     }
   }
@@ -178,13 +314,18 @@ export const fetchMonitoringData = createAsyncThunk(
   async (params, { rejectWithValue }) => {
     try {
       const monitoringRef = collection(db, 'monitoring');
-      let q = monitoringRef;
+      let q = query(monitoringRef);
       
+      const constraints = [];
       if (params?.courseId) {
-        q = query(q, where('courseId', '==', params.courseId));
+        constraints.push(where('courseId', '==', params.courseId));
       }
       if (params?.studentId) {
-        q = query(q, where('studentId', '==', params.studentId));
+        constraints.push(where('studentId', '==', params.studentId));
+      }
+      
+      if (constraints.length > 0) {
+        q = query(monitoringRef, ...constraints);
       }
       
       const snapshot = await getDocs(q);
@@ -207,10 +348,10 @@ export const createObservation = createAsyncThunk(
     try {
       const docRef = await addDoc(collection(db, 'observations'), {
         ...data,
-        createdAt: new Date().toISOString()
+        createdAt: serverTimestamp()
       });
       
-      return { id: docRef.id, ...data };
+      return { id: docRef.id, ...data, createdAt: new Date().toISOString() };
     } catch (error) {
       console.error('❌ Error creating observation:', error);
       return rejectWithValue(error.message);
@@ -300,7 +441,7 @@ export const fetchCourseProgress = createAsyncThunk(
 
 export const fetchCourseActivities = createAsyncThunk(
   'monitoring/fetchCourseActivities',
-  async ({ courseId, studentId, limit = 10 }, { rejectWithValue }) => {
+  async ({ courseId, studentId, limitCount = 10 }, { rejectWithValue }) => {
     try {
       const activitiesRef = collection(db, 'activities');
       const q = query(
@@ -308,7 +449,7 @@ export const fetchCourseActivities = createAsyncThunk(
         where('courseId', '==', courseId),
         where('studentId', '==', studentId),
         orderBy('date', 'desc'),
-        limit(limit)
+        limit(limitCount)
       );
       
       const snapshot = await getDocs(q);
@@ -355,19 +496,24 @@ export const fetchRatings = createAsyncThunk(
   async ({ studentId, lecturerId, courseId }, { rejectWithValue }) => {
     try {
       const ratingsRef = collection(db, 'ratings');
-      let q = ratingsRef;
+      let q = query(ratingsRef);
       
+      const constraints = [];
       if (studentId) {
-        q = query(q, where('studentId', '==', studentId));
+        constraints.push(where('studentId', '==', studentId));
       }
       if (lecturerId) {
-        q = query(q, where('lecturerId', '==', lecturerId));
+        constraints.push(where('lecturerId', '==', lecturerId));
       }
       if (courseId) {
-        q = query(q, where('courseId', '==', courseId));
+        constraints.push(where('courseId', '==', courseId));
       }
       
-      q = query(q, orderBy('createdAt', 'desc'));
+      if (constraints.length > 0) {
+        q = query(ratingsRef, ...constraints, orderBy('createdAt', 'desc'));
+      } else {
+        q = query(ratingsRef, orderBy('createdAt', 'desc'));
+      }
       
       const snapshot = await getDocs(q);
       const ratings = [];
@@ -389,11 +535,11 @@ export const submitRating = createAsyncThunk(
     try {
       const docRef = await addDoc(collection(db, 'ratings'), {
         ...ratingData,
-        createdAt: new Date().toISOString()
+        createdAt: serverTimestamp()
       });
       
       return {
-        rating: { id: docRef.id, ...ratingData }
+        rating: { id: docRef.id, ...ratingData, createdAt: new Date().toISOString() }
       };
     } catch (error) {
       console.error('❌ Error submitting rating:', error);
@@ -407,13 +553,18 @@ export const fetchRatingAverages = createAsyncThunk(
   async ({ courseId, lecturerId }, { rejectWithValue }) => {
     try {
       const ratingsRef = collection(db, 'ratings');
-      let q = ratingsRef;
+      let q = query(ratingsRef);
       
+      const constraints = [];
       if (courseId) {
-        q = query(q, where('courseId', '==', courseId));
+        constraints.push(where('courseId', '==', courseId));
       }
       if (lecturerId) {
-        q = query(q, where('lecturerId', '==', lecturerId));
+        constraints.push(where('lecturerId', '==', lecturerId));
+      }
+      
+      if (constraints.length > 0) {
+        q = query(ratingsRef, ...constraints);
       }
       
       const snapshot = await getDocs(q);
@@ -430,20 +581,23 @@ export const fetchRatingAverages = createAsyncThunk(
         punctuality: 0,
         material: 0,
         support: 0,
+        totalRatings: ratings.length,
       };
       
       if (ratings.length > 0) {
         ratings.forEach(r => {
-          averages.overall += r.overall || 0;
-          averages.teaching += r.teaching || 0;
-          averages.communication += r.communication || 0;
-          averages.punctuality += r.punctuality || 0;
-          averages.material += r.material || 0;
-          averages.support += r.support || 0;
+          averages.overall += Number(r.overall) || 0;
+          averages.teaching += Number(r.teaching) || 0;
+          averages.communication += Number(r.communication) || 0;
+          averages.punctuality += Number(r.punctuality) || 0;
+          averages.material += Number(r.material) || 0;
+          averages.support += Number(r.support) || 0;
         });
         
         Object.keys(averages).forEach(key => {
-          averages[key] = (averages[key] / ratings.length).toFixed(1);
+          if (key !== 'totalRatings') {
+            averages[key] = (averages[key] / ratings.length).toFixed(1);
+          }
         });
       }
       
@@ -464,7 +618,7 @@ export const trackCourseEngagement = createAsyncThunk(
         studentId,
         engagementType,
         metadata,
-        timestamp: new Date().toISOString()
+        timestamp: serverTimestamp()
       });
       
       return { metrics: {} };
@@ -498,6 +652,7 @@ const monitoringSlice = createSlice({
     reports: [],
     selectedReport: null,
     reportsLoading: false,
+    lecturerReportStats: null,
     
     loading: false,
     isLoading: false,
@@ -535,6 +690,9 @@ const monitoringSlice = createSlice({
     },
     setSelectedReport: (state, action) => {
       state.selectedReport = action.payload;
+    },
+    addReportLocally: (state, action) => {
+      state.reports.unshift(action.payload);
     },
   },
   extraReducers: (builder) => {
@@ -739,6 +897,19 @@ const monitoringSlice = createSlice({
       .addCase(fetchReportById.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
+      })
+      
+      // fetchLecturerReportStats
+      .addCase(fetchLecturerReportStats.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(fetchLecturerReportStats.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.lecturerReportStats = action.payload;
+      })
+      .addCase(fetchLecturerReportStats.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
       });
   },
 });
@@ -756,6 +927,7 @@ export const {
   updateCourseMonitoringLocally,
   clearSelectedReport,
   setSelectedReport,
+  addReportLocally,
 } = monitoringSlice.actions;
 
 // ============================================
@@ -776,6 +948,7 @@ export const selectSelectedPeriod = (state) => state.monitoring?.selectedPeriod 
 export const selectReports = (state) => state.monitoring?.reports || [];
 export const selectSelectedReport = (state) => state.monitoring?.selectedReport || null;
 export const selectReportsLoading = (state) => state.monitoring?.reportsLoading || false;
+export const selectLecturerReportStats = (state) => state.monitoring?.lecturerReportStats || null;
 
 // Computed selectors
 export const selectCourseAttendanceRate = (state) => {
@@ -801,5 +974,16 @@ export const selectCoursePerformanceMetrics = (state) => {
 
 export const selectMonitoringLoading = (state) => state.monitoring?.isLoading || false;
 export const selectMonitoringError = (state) => state.monitoring?.error || null;
+
+// Computed report statistics for current lecturer
+export const selectMyReportStats = (state) => {
+  const reports = state.monitoring?.reports || [];
+  return {
+    total: reports.length,
+    pending: reports.filter(r => r.status === 'pending').length,
+    approved: reports.filter(r => r.status === 'approved').length,
+    rejected: reports.filter(r => r.status === 'rejected').length,
+  };
+};
 
 export default monitoringSlice.reducer;
