@@ -27,6 +27,8 @@ import LecturerAttendance from '../lecturer/LecturerAttendance';
 import LecturerReports from '../lecturer/LecturerReports';
 import LecturerRatings from '../lecturer/LecturerRatings';
 import LecturerProfile from '../lecturer/LecturerProfile';
+import LecturerMonitoring from '../lecturer/LecturerMonitoring';
+import LecturerReportingForm from '../lecturer/LecturerReportingForm'; // ← ADD THIS IMPORT
 
 // PRL screens
 import PRLDashboard from '../prl/prlDashboard';
@@ -50,7 +52,7 @@ import AdminScreen from '../pl/AdminScreen';
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// --- Tab Navigators (Unchanged logic, just keeping the structure) ---
+// --- Tab Navigators ---
 
 function StudentTabs() {
   return (
@@ -78,6 +80,37 @@ function StudentTabs() {
       <Tab.Screen name="Ratings" component={StudentRatings} />
       <Tab.Screen name="Profile" component={StudentProfile} />
     </Tab.Navigator>
+  );
+}
+
+// Create a stack for Lecturer to include screens not in tabs
+function LecturerStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="LecturerTabs" component={LecturerTabs} />
+      <Stack.Screen 
+        name="LecturerReportingForm" 
+        component={LecturerReportingForm}
+        options={{ 
+          headerShown: true,
+          title: 'Weekly Lecture Report',
+          headerStyle: { backgroundColor: COLORS.headerBackground },
+          headerTitleStyle: { color: COLORS.headerText },
+          headerTintColor: COLORS.primary,
+        }}
+      />
+      <Stack.Screen 
+        name="LecturerMonitoring" 
+        component={LecturerMonitoring}
+        options={{ 
+          headerShown: true,
+          title: 'Class Monitoring',
+          headerStyle: { backgroundColor: COLORS.headerBackground },
+          headerTitleStyle: { color: COLORS.headerText },
+          headerTintColor: COLORS.primary,
+        }}
+      />
+    </Stack.Navigator>
   );
 }
 
@@ -183,17 +216,17 @@ function PLTabs() {
 export default function AppNavigator() {
   const dispatch = useDispatch();
   
-  // Accessing the auth state from Version A (the slice connected to Firebase)
+  // Accessing the auth state
   const auth = useSelector((state) => state.auth);
   const { isAuthenticated, user, isInitialized } = auth;
 
-  // Load stored user on app start - will NOT auto-authenticate
+  // Load stored user on app start
   useEffect(() => {
     console.log('🔄 [AppNavigator] Loading stored user data');
     dispatch(loadStoredUser());
   }, [dispatch]);
 
-  // Check session periodically (every minute) when authenticated
+  // Check session periodically
   useEffect(() => {
     if (!isAuthenticated) return;
     
@@ -202,10 +235,8 @@ export default function AppNavigator() {
       const expired = await dispatch(checkSessionTimeout()).unwrap();
       if (expired) {
         console.log('⏰ [AppNavigator] Session expired, user will be logged out');
-        // No need to do anything else - the logout action will update Redux state
-        // and the navigation will automatically switch to Login screen
       }
-    }, 60000); // Check every minute
+    }, 60000);
     
     return () => {
       console.log('🛑 [AppNavigator] Stopping session timeout checker');
@@ -213,40 +244,30 @@ export default function AppNavigator() {
     };
   }, [dispatch, isAuthenticated]);
 
-  // Log the state transition for debugging
-  useEffect(() => {
-    console.log('🚩 [AppNavigator] Auth State Updated:', {
-      authenticated: isAuthenticated,
-      userEmail: user?.email,
-      role: user?.role,
-      initialized: isInitialized
-    });
-  }, [isAuthenticated, user, isInitialized]);
-
-  // Show nothing while initializing (prevents flash of login screen)
+  // Show nothing while initializing
   if (!isInitialized) {
     console.log('⏳ [AppNavigator] Auth not initialized yet, showing splash');
-    return null; // Or return your splash screen component
+    return null;
   }
 
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {!isAuthenticated ? (
-          // Auth flow - Always show login screen first
+          // Auth flow
           <>
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
             <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
           </>
         ) : (
-          // Authenticated flow - Switch based on the user role
+          // Authenticated flow - Switch based on role
           <>
             {user?.role === 'student' && (
               <Stack.Screen name="StudentDashboard" component={StudentTabs} />
             )}
             {user?.role === 'lecturer' && (
-              <Stack.Screen name="LecturerDashboard" component={LecturerTabs} />
+              <Stack.Screen name="LecturerDashboard" component={LecturerStack} />  
             )}
             {user?.role === 'prl' && (
               <Stack.Screen name="PRLDashboard" component={PRLTabs} />
@@ -255,7 +276,7 @@ export default function AppNavigator() {
               <Stack.Screen name="PLDashboard" component={PLTabs} />
             )}
             
-            {/* Fallback Screen if role is missing but authenticated */}
+            {/* Fallback */}
             {!user?.role && (
                <Stack.Screen name="Login" component={LoginScreen} />
             )}

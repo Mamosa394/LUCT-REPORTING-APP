@@ -126,7 +126,8 @@ export default function LecturerReportingForm({ navigation, route }) {
     try {
       const reportData = {
         ...formData,
-        submittedBy: user?.id,
+        submittedBy: user?.id || user?.uid,
+        submittedByName: user?.name, 
         submittedAt: new Date().toISOString(),
         type: 'lecturer_weekly_report',
         status: 'pending',
