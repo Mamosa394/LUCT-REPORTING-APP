@@ -33,8 +33,7 @@ import LecturerReportingForm from '../lecturer/LecturerReportingForm';
 // PRL screens
 import PRLDashboard from '../prl/prlDashboard';
 import PRLCourses from '../prl/prlCourses';
-import PRLReports from '../prl/prlReports';
-import PRLReportReview from '../prl/prlReports';
+import PrlReports from '../prl/PrlReports';
 import PRLMonitoring from '../prl/prlMonitoring';
 import PRLRatings from '../prl/prlRatings';
 import PRLProfile from '../prl/prlProfile';
@@ -151,11 +150,11 @@ function PRLStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="PRLTabs" component={PRLTabs} />
       <Stack.Screen 
-        name="prlReports" 
-        component={PRLReportReview}
+        name="PrlReports" 
+        component={PrlReports}
         options={{ 
           headerShown: true,
-          title: 'Review Report',
+          title: 'PrlReports',
           headerStyle: { backgroundColor: COLORS.headerBackground },
           headerTitleStyle: { color: COLORS.headerText },
           headerTintColor: COLORS.primary,
@@ -188,7 +187,7 @@ function PRLTabs() {
     >
       <Tab.Screen name="Dashboard" component={PRLDashboard} />
       <Tab.Screen name="Courses" component={PRLCourses} />
-      <Tab.Screen name="Reports" component={PRLReports} />
+      <Tab.Screen name="Reports" component={PrlReports} />
       <Tab.Screen name="Monitoring" component={PRLMonitoring} />
       <Tab.Screen name="Ratings" component={PRLRatings} />
       <Tab.Screen name="Profile" component={PRLProfile} />

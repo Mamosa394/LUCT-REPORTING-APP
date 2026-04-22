@@ -10,9 +10,44 @@ import {
   updateDoc, 
   deleteDoc,
   orderBy,
-  limit
+  limit,
+  Timestamp  // Import Timestamp to check for it
 } from 'firebase/firestore';
 import { db } from '../../config/firebase';
+
+// Helper function to convert Firestore Timestamps to ISO strings
+const convertTimestamps = (data) => {
+  if (!data) return data;
+  
+  // Handle Timestamp objects
+  if (data instanceof Timestamp) {
+    return data.toDate().toISOString();
+  }
+  
+  // Handle arrays
+  if (Array.isArray(data)) {
+    return data.map(item => convertTimestamps(item));
+  }
+  
+  // Handle objects
+  if (typeof data === 'object' && data !== null) {
+    // Check for Firestore Timestamp in object form
+    if (data.seconds !== undefined && data.nanoseconds !== undefined && data.type === 'firestore/timestamp/1.0') {
+      const timestamp = new Timestamp(data.seconds, data.nanoseconds);
+      return timestamp.toDate().toISOString();
+    }
+    
+    const converted = {};
+    for (const key in data) {
+      if (data.hasOwnProperty(key)) {
+        converted[key] = convertTimestamps(data[key]);
+      }
+    }
+    return converted;
+  }
+  
+  return data;
+};
 
 class FirebaseApi {
   // Generic GET collection
@@ -37,7 +72,10 @@ class FirebaseApi {
       const snapshot = await getDocs(q);
       const data = [];
       snapshot.forEach(doc => {
-        data.push({ id: doc.id, ...doc.data() });
+        const docData = doc.data();
+        // Convert all timestamps to ISO strings
+        const convertedData = convertTimestamps(docData);
+        data.push({ id: doc.id, ...convertedData });
       });
       
       return { data: { [collectionName]: data, total: data.length } };
@@ -54,7 +92,10 @@ class FirebaseApi {
       const snapshot = await getDoc(docRef);
       
       if (snapshot.exists()) {
-        return { data: { [collectionName.slice(0, -1)]: { id: snapshot.id, ...snapshot.data() } } };
+        const docData = snapshot.data();
+        // Convert all timestamps to ISO strings
+        const convertedData = convertTimestamps(docData);
+        return { data: { [collectionName.slice(0, -1)]: { id: snapshot.id, ...convertedData } } };
       }
       throw new Error('Document not found');
     } catch (error) {
@@ -66,8 +107,20 @@ class FirebaseApi {
   // Generic POST (create)
   async postDocument(collectionName, data) {
     try {
+      // Convert any date strings back to Date objects for Firestore if needed
+      const firestoreData = { ...data };
+      
+      // If you need to convert ISO strings back to Dates for Firestore queries
+      // This is optional - Firestore accepts ISO strings as well
+      if (firestoreData.createdAt && typeof firestoreData.createdAt === 'string') {
+        firestoreData.createdAt = new Date(firestoreData.createdAt);
+      }
+      if (firestoreData.updatedAt && typeof firestoreData.updatedAt === 'string') {
+        firestoreData.updatedAt = new Date(firestoreData.updatedAt);
+      }
+      
       const docRef = await addDoc(collection(db, collectionName), {
-        ...data,
+        ...firestoreData,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       });
@@ -83,8 +136,15 @@ class FirebaseApi {
   async updateDocument(collectionName, id, data) {
     try {
       const docRef = doc(db, collectionName, id);
+      
+      // Convert any date strings back to Date objects for Firestore if needed
+      const firestoreData = { ...data };
+      if (firestoreData.updatedAt && typeof firestoreData.updatedAt === 'string') {
+        firestoreData.updatedAt = new Date(firestoreData.updatedAt);
+      }
+      
       await updateDoc(docRef, {
-        ...data,
+        ...firestoreData,
         updatedAt: new Date().toISOString()
       });
       
