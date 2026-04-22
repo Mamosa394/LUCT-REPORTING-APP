@@ -1,11 +1,16 @@
 // src/config/firebase.js
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { 
+  initializeAuth, 
+  getAuth,
+  memoryPersistence,
+  inMemoryPersistence // Try this if memoryPersistence doesn't work
+} from 'firebase/auth'; 
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getMessaging, isSupported } from 'firebase/messaging';
 
-// Firebase configuration from your Android client JSON
+// Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyDrv_30LrrF5RfJrforMXJZzAeYEMR8Mfg",
   authDomain: "luct-reporting-database.firebaseapp.com",
@@ -18,8 +23,23 @@ const firebaseConfig = {
 // Initialize Firebase app
 const app = initializeApp(firebaseConfig);
 
-// Auth instance
-export const auth = getAuth(app);
+// Safe Auth initialization - prevents "already-initialized" error
+let auth;
+try {
+  // Try to initialize with memory persistence
+  auth = initializeAuth(app, {
+    persistence: memoryPersistence
+  });
+} catch (error) {
+  if (error.code === 'auth/already-initialized') {
+    // Auth already initialized, use the existing instance
+    auth = getAuth(app);
+  } else {
+    throw error; // Re-throw if it's a different error
+  }
+}
+
+export { auth };
 
 // Firestore instance
 export const db = getFirestore(app);

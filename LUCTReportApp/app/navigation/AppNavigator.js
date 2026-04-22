@@ -28,12 +28,13 @@ import LecturerReports from '../lecturer/LecturerReports';
 import LecturerRatings from '../lecturer/LecturerRatings';
 import LecturerProfile from '../lecturer/LecturerProfile';
 import LecturerMonitoring from '../lecturer/LecturerMonitoring';
-import LecturerReportingForm from '../lecturer/LecturerReportingForm'; // ← ADD THIS IMPORT
+import LecturerReportingForm from '../lecturer/LecturerReportingForm';
 
 // PRL screens
 import PRLDashboard from '../prl/prlDashboard';
 import PRLCourses from '../prl/prlCourses';
 import PRLReports from '../prl/prlReports';
+import PRLReportReview from '../prl/prlReports';
 import PRLMonitoring from '../prl/prlMonitoring';
 import PRLRatings from '../prl/prlRatings';
 import PRLProfile from '../prl/prlProfile';
@@ -47,7 +48,6 @@ import PLReports from '../pl/plReports';
 import PLMonitoring from '../pl/plMonitoring';
 import PLRatings from '../pl/plRatings';
 import PLProfile from '../pl/plProfile';
-import AdminScreen from '../pl/AdminScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -83,7 +83,6 @@ function StudentTabs() {
   );
 }
 
-// Create a stack for Lecturer to include screens not in tabs
 function LecturerStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -142,6 +141,27 @@ function LecturerTabs() {
       <Tab.Screen name="Ratings" component={LecturerRatings} />
       <Tab.Screen name="Profile" component={LecturerProfile} />
     </Tab.Navigator>
+  );
+}
+
+// PRL Stack Navigator
+function PRLStack() {
+  console.log('🔵 [PRLStack] Rendering PRL Stack Navigator');
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="PRLTabs" component={PRLTabs} />
+      <Stack.Screen 
+        name="prlReports" 
+        component={PRLReportReview}
+        options={{ 
+          headerShown: true,
+          title: 'Review Report',
+          headerStyle: { backgroundColor: COLORS.headerBackground },
+          headerTitleStyle: { color: COLORS.headerText },
+          headerTintColor: COLORS.primary,
+        }}
+      />
+    </Stack.Navigator>
   );
 }
 
@@ -216,25 +236,26 @@ function PLTabs() {
 export default function AppNavigator() {
   const dispatch = useDispatch();
   
-  // Accessing the auth state
   const auth = useSelector((state) => state.auth);
   const { isAuthenticated, user, isInitialized } = auth;
 
-  // Load stored user on app start
   useEffect(() => {
     console.log('🔄 [AppNavigator] Loading stored user data');
     dispatch(loadStoredUser());
   }, [dispatch]);
 
-  // Check session periodically
   useEffect(() => {
     if (!isAuthenticated) return;
     
     console.log('⏰ [AppNavigator] Starting session timeout checker');
     const sessionCheckInterval = setInterval(async () => {
-      const expired = await dispatch(checkSessionTimeout()).unwrap();
-      if (expired) {
-        console.log('⏰ [AppNavigator] Session expired, user will be logged out');
+      try {
+        const expired = await dispatch(checkSessionTimeout()).unwrap();
+        if (expired) {
+          console.log('⏰ [AppNavigator] Session expired, user will be logged out');
+        }
+      } catch (error) {
+        console.error('Session check error:', error);
       }
     }, 60000);
     
@@ -244,41 +265,38 @@ export default function AppNavigator() {
     };
   }, [dispatch, isAuthenticated]);
 
-  // Show nothing while initializing
   if (!isInitialized) {
     console.log('⏳ [AppNavigator] Auth not initialized yet, showing splash');
     return null;
   }
 
+  console.log('🔵 [AppNavigator] User role:', user?.role);
+
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {!isAuthenticated ? (
-          // Auth flow
           <>
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
             <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
           </>
         ) : (
-          // Authenticated flow - Switch based on role
           <>
             {user?.role === 'student' && (
               <Stack.Screen name="StudentDashboard" component={StudentTabs} />
             )}
             {user?.role === 'lecturer' && (
-              <Stack.Screen name="LecturerDashboard" component={LecturerStack} />  
+              <Stack.Screen name="LecturerDashboard" component={LecturerStack} />
             )}
             {user?.role === 'prl' && (
-              <Stack.Screen name="PRLDashboard" component={PRLTabs} />
+              <Stack.Screen name="PRLDashboard" component={PRLStack} />
             )}
             {user?.role === 'pl' && (
               <Stack.Screen name="PLDashboard" component={PLTabs} />
             )}
-            
-            {/* Fallback */}
             {!user?.role && (
-               <Stack.Screen name="Login" component={LoginScreen} />
+              <Stack.Screen name="Login" component={LoginScreen} />
             )}
           </>
         )}
