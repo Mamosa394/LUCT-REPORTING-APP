@@ -198,7 +198,7 @@ export default function StudentDashboard({ navigation }) {
               onPress={() => handleQuickAction('Attendance')}
             >
               <View style={[styles.actionIcon, { backgroundColor: COLORS.primary + '15' }]}>
-                <Ionicons name="calendar-outline" size={28} color={COLORS.primary} />
+                <Ionicons name="checkmark-done-circle-outline" size={28} color={COLORS.primary} />
               </View>
               <Text style={styles.actionText}>Attendance</Text>
             </TouchableOpacity>
@@ -208,7 +208,7 @@ export default function StudentDashboard({ navigation }) {
               onPress={() => handleQuickAction('Courses')}
             >
               <View style={[styles.actionIcon, { backgroundColor: COLORS.info + '15' }]}>
-                <Ionicons name="book-outline" size={28} color={COLORS.info} />
+                <Ionicons name="library-outline" size={28} color={COLORS.info} />
               </View>
               <Text style={styles.actionText}>Courses</Text>
             </TouchableOpacity>
@@ -218,7 +218,7 @@ export default function StudentDashboard({ navigation }) {
               onPress={() => handleQuickAction('Ratings')}
             >
               <View style={[styles.actionIcon, { backgroundColor: COLORS.warning + '15' }]}>
-                <Ionicons name="star-outline" size={28} color={COLORS.warning} />
+                <Ionicons name="ribbon-outline" size={28} color={COLORS.warning} />
               </View>
               <Text style={styles.actionText}>Rate</Text>
             </TouchableOpacity>
@@ -228,7 +228,7 @@ export default function StudentDashboard({ navigation }) {
               onPress={() => handleQuickAction('Profile')}
             >
               <View style={[styles.actionIcon, { backgroundColor: COLORS.success + '15' }]}>
-                <Ionicons name="person-outline" size={28} color={COLORS.success} />
+                <Ionicons name="person-circle-outline" size={28} color={COLORS.success} />
               </View>
               <Text style={styles.actionText}>Profile</Text>
             </TouchableOpacity>

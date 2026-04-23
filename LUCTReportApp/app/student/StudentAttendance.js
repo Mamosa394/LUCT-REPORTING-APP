@@ -1,4 +1,4 @@
-// app/student/Attendance.js - Simplified version
+// app/student/Attendance.js - Fixed student ID handling
 
 import React, { useEffect, useState } from 'react';
 import {
@@ -6,31 +6,37 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert
+  Alert,
+  Modal,
+  ActivityIndicator
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
-import { ScreenContainer, LoadingSpinner, Card } from '../../src/components/UI';
-import { AttendanceCalendar, AttendanceLegend } from '../../src/components/Attendance';
+import { ScreenContainer, LoadingSpinner, Card, Button } from '../../src/components/UI';
+import { AttendanceCalendar, AttendanceLegend  } from '../../src/components/Attendance';
 import { COLORS, spacing, typography } from '../../config/theme';
 import {
   fetchAttendance,
-  fetchStudentAttendanceSummary
+  fetchStudentAttendanceSummary,
+  markAttendance
 } from '../../src/store/attendanceSlice';
 import { fetchCourses } from '../../src/store/courseSlice';
 
 export default function StudentAttendance({ navigation }) {
   const dispatch = useDispatch();
-  const { records = [], stats: studentSummary, loading } = useSelector(state => state.attendance);
+  const { records = [], stats: studentSummary, loading, marking } = useSelector(state => state.attendance);
   const { courses = [] } = useSelector(state => state.courses);
   const { user } = useSelector(state => state.auth);
   
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
+  const [showMarkModal, setShowMarkModal] = useState(false);
+  const [attendanceStatus, setAttendanceStatus] = useState(null);
   const [currentSession, setCurrentSession] = useState(null);
 
-  // Get the correct student ID
+  // ✅ FIXED: Get the correct student ID
   const studentId = user?.uid || user?.id || user?.studentId || user?.employeeId;
+  const studentName = user?.name || user?.displayName || 'Student';
 
   useEffect(() => {
     loadData();
@@ -83,8 +89,98 @@ export default function StudentAttendance({ navigation }) {
         `Date: ${new Date(day.dateString).toLocaleDateString()}\nStatus: ${record.status?.toUpperCase()}`,
         [{ text: 'OK' }]
       );
+    } else if (isToday(day.dateString)) {
+      setAttendanceStatus(null);
+      setShowMarkModal(true);
     } else {
-      Alert.alert('No Record', 'No attendance record for this date.');
+      Alert.alert('No Record', 'No attendance record for this date. Attendance can only be marked for today.');
+    }
+  };
+
+  const isToday = (dateString) => {
+    const today = new Date().toISOString().split('T')[0];
+    return dateString === today;
+  };
+
+  const handleMarkAttendance = async (status) => {
+    // ✅ FIXED: Validate all required fields
+    if (!selectedCourse) {
+      Alert.alert('Select Course', 'Please select a course first');
+      return;
+    }
+
+    if (!studentId) {
+      Alert.alert('Error', 'Student ID not found. Please log in again.');
+      console.error('❌ Student ID is undefined. User object:', user);
+      return;
+    }
+
+    if (!selectedDate || !isToday(selectedDate)) {
+      Alert.alert('Invalid Date', 'Attendance can only be marked for today');
+      return;
+    }
+
+    const finalStatus = status || 'present';
+
+    try {
+      const attendanceData = {
+        courseId: selectedCourse.id,
+        courseCode: selectedCourse.code || 'N/A',
+        courseName: selectedCourse.name || 'Unnamed Course',
+        studentId: studentId, // ✅ Now guaranteed to be defined
+        studentName: studentName,
+        date: new Date().toISOString(),
+        status: finalStatus,
+        lecturerId: selectedCourse.lecturerId || null,
+        lecturerName: selectedCourse.lecturerName || null
+      };
+
+      console.log('📝 Marking attendance with data:', attendanceData);
+
+      await dispatch(markAttendance(attendanceData)).unwrap();
+      
+      setShowMarkModal(false);
+      Alert.alert(
+        'Success',
+        `Attendance marked as ${finalStatus.toUpperCase()}`,
+        [{ text: 'OK' }]
+      );
+      
+      // Refresh attendance data
+      if (studentId) {
+        dispatch(fetchAttendance({
+          moduleId: selectedCourse.id,
+          studentId: studentId,
+          month: new Date().getMonth() + 1,
+          year: new Date().getFullYear()
+        }));
+        
+        dispatch(fetchStudentAttendanceSummary({ studentId: studentId }));
+      }
+    } catch (error) {
+      console.error('❌ Mark attendance error:', error);
+      Alert.alert('Error', error.message || 'Failed to mark attendance');
+    }
+  };
+
+  const handleQuickMark = () => {
+    if (!selectedCourse) {
+      Alert.alert('Select Course', 'Please select a course first');
+      return;
+    }
+    
+    const today = new Date().toISOString().split('T')[0];
+    const todayRecord = records?.find(r => r.date?.split('T')[0] === today);
+    
+    if (todayRecord) {
+      Alert.alert(
+        'Already Marked',
+        `You have already marked attendance for today as ${todayRecord.status?.toUpperCase()}`,
+        [{ text: 'OK' }]
+      );
+    } else {
+      setSelectedDate(today);
+      setShowMarkModal(true);
     }
   };
 
@@ -96,7 +192,7 @@ export default function StudentAttendance({ navigation }) {
 
   const todayStatus = getTodayAttendanceStatus();
 
-  // Show error if student ID is missing
+  // ✅ FIXED: Show error if student ID is missing
   if (!studentId) {
     return (
       <ScreenContainer>
@@ -116,7 +212,7 @@ export default function StudentAttendance({ navigation }) {
   return (
     <ScreenContainer scrollable={true}>
       <View style={styles.container}>
-        {/* Active Session Banner - Only shows notice, no button */}
+        {/* Active Session Banner */}
         {currentSession?.isActive && !todayStatus && (
           <Card style={styles.activeSessionCard}>
             <View style={styles.activeSessionHeader}>
@@ -126,9 +222,13 @@ export default function StudentAttendance({ navigation }) {
             <Text style={styles.activeSessionSubtext}>
               {currentSession.courseName} • Expires in {currentSession.expiresIn}
             </Text>
-            <Text style={styles.activeSessionNote}>
-              Please wait for your lecturer to mark your attendance
-            </Text>
+            <TouchableOpacity
+              style={styles.markNowButton}
+              onPress={handleQuickMark}
+            >
+              <Text style={styles.markNowText}>Mark Attendance Now</Text>
+              <Ionicons name="arrow-forward" size={18} color={COLORS.primary} />
+            </TouchableOpacity>
           </Card>
         )}
 
@@ -221,7 +321,17 @@ export default function StudentAttendance({ navigation }) {
                     </View>
                   </View>
                 ) : (
-                  <Text style={styles.noRecordText}>No attendance record for this date</Text>
+                  <View>
+                    <Text style={styles.noRecordText}>No attendance record</Text>
+                    {isToday(selectedDate) && (
+                      <TouchableOpacity
+                        style={styles.markButton}
+                        onPress={() => setShowMarkModal(true)}
+                      >
+                        <Text style={styles.markButtonText}>Mark Attendance</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 )}
               </Card>
             )}
@@ -237,6 +347,90 @@ export default function StudentAttendance({ navigation }) {
           </Card>
         )}
       </View>
+
+      {/* Mark Attendance Modal */}
+      <Modal
+        visible={showMarkModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowMarkModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Mark Attendance</Text>
+              <TouchableOpacity onPress={() => setShowMarkModal(false)}>
+                <Ionicons name="close" size={24} color={COLORS.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={styles.modalSubtitle}>
+              {selectedCourse?.name} ({selectedCourse?.code})
+            </Text>
+            <Text style={styles.modalDate}>
+              {selectedDate ? new Date(selectedDate).toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric'
+              }) : new Date().toLocaleDateString()}
+            </Text>
+
+            <Text style={styles.modalLabel}>Select your status:</Text>
+
+            <TouchableOpacity
+              style={[styles.statusOption, attendanceStatus === 'present' && styles.statusOptionSelected]}
+              onPress={() => setAttendanceStatus('present')}
+            >
+              <View style={[styles.statusDot, { backgroundColor: COLORS.success }]} />
+              <Text style={styles.statusOptionText}>Present</Text>
+              {attendanceStatus === 'present' && (
+                <Ionicons name="checkmark" size={20} color={COLORS.success} />
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.statusOption, attendanceStatus === 'late' && styles.statusOptionSelected]}
+              onPress={() => setAttendanceStatus('late')}
+            >
+              <View style={[styles.statusDot, { backgroundColor: COLORS.warning }]} />
+              <Text style={styles.statusOptionText}>Late</Text>
+              {attendanceStatus === 'late' && (
+                <Ionicons name="checkmark" size={20} color={COLORS.warning} />
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.statusOption, attendanceStatus === 'absent' && styles.statusOptionSelected]}
+              onPress={() => setAttendanceStatus('absent')}
+            >
+              <View style={[styles.statusDot, { backgroundColor: COLORS.error }]} />
+              <Text style={styles.statusOptionText}>Absent</Text>
+              {attendanceStatus === 'absent' && (
+                <Ionicons name="checkmark" size={20} color={COLORS.error} />
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.modalActions}>
+              <Button
+                title="Cancel"
+                variant="secondary"
+                onPress={() => setShowMarkModal(false)}
+                style={styles.modalButton}
+              />
+              <Button
+                title={marking ? "Marking..." : "Confirm"}
+                onPress={() => handleMarkAttendance(attendanceStatus || 'present')}
+                disabled={marking}
+                style={styles.modalButton}
+              />
+            </View>
+
+            {marking && (
+              <ActivityIndicator style={styles.modalLoader} color={COLORS.primary} />
+            )}
+          </View>
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 }
@@ -278,7 +472,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary + '10',
     borderLeftWidth: 4,
     borderLeftColor: COLORS.success,
-    padding: spacing.md,
   },
   activeSessionHeader: {
     flexDirection: 'row',
@@ -294,18 +487,26 @@ const styles = StyleSheet.create({
   activeSessionSubtext: {
     ...typography.caption,
     color: COLORS.textSecondary,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.md,
   },
-  activeSessionNote: {
-    ...typography.caption,
-    color: COLORS.textDisabled,
-    fontStyle: 'italic',
+  markNowButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.surfaceLight,
+    padding: spacing.sm,
+    borderRadius: 8,
+  },
+  markNowText: {
+    ...typography.bodySmall,
+    color: COLORS.primary,
+    fontWeight: '600',
+    marginRight: spacing.xs,
   },
   todayStatusCard: {
     marginBottom: spacing.md,
     alignItems: 'center',
     borderLeftWidth: 4,
-    padding: spacing.md,
   },
   todayStatusHeader: {
     flexDirection: 'row',
@@ -367,7 +568,6 @@ const styles = StyleSheet.create({
   dateInfo: {
     marginTop: spacing.md,
     alignItems: 'center',
-    padding: spacing.md,
   },
   dateText: {
     ...typography.body,
@@ -395,6 +595,18 @@ const styles = StyleSheet.create({
   noRecordText: {
     ...typography.bodySmall,
     color: COLORS.textDisabled,
+    marginBottom: spacing.md,
+  },
+  markButton: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: 8,
+  },
+  markButtonText: {
+    ...typography.bodySmall,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
   selectPrompt: {
     marginTop: spacing.xl,
@@ -405,6 +617,78 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: COLORS.textSecondary,
     textAlign: 'center',
+    marginTop: spacing.md,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: spacing.lg,
+    minHeight: 400,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  modalTitle: {
+    ...typography.h3,
+    color: COLORS.text,
+  },
+  modalSubtitle: {
+    ...typography.body,
+    color: COLORS.text,
+    fontWeight: '600',
+  },
+  modalDate: {
+    ...typography.caption,
+    color: COLORS.textSecondary,
+    marginBottom: spacing.lg,
+  },
+  modalLabel: {
+    ...typography.body,
+    color: COLORS.textSecondary,
+    marginBottom: spacing.md,
+  },
+  statusOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    backgroundColor: COLORS.surfaceLight,
+    borderRadius: 12,
+    marginBottom: spacing.sm,
+  },
+  statusOptionSelected: {
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+  },
+  statusDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: spacing.md,
+  },
+  statusOptionText: {
+    ...typography.body,
+    color: COLORS.text,
+    flex: 1,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: spacing.lg,
+    gap: spacing.md,
+  },
+  modalButton: {
+    flex: 1,
+  },
+  modalLoader: {
     marginTop: spacing.md,
   },
 });

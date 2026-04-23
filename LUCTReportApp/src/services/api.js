@@ -1,4 +1,4 @@
-// src/services/firebaseApi.js
+// src/services/api.js
 
 import { 
   collection, 
@@ -105,25 +105,49 @@ class FirebaseApi {
     }
   }
 
-  // Generic POST (create)
+  // ✅ FIXED: Generic POST (create) - Only this method is updated
   async postDocument(collectionName, data) {
     try {
+      console.log(`📝 Creating document in ${collectionName}:`, data);
+      
+      // Create a clean copy of the data for Firestore
       const firestoreData = { ...data };
       
-      if (firestoreData.createdAt && typeof firestoreData.createdAt === 'string') {
-        firestoreData.createdAt = new Date(firestoreData.createdAt);
-      }
-      if (firestoreData.updatedAt && typeof firestoreData.updatedAt === 'string') {
-        firestoreData.updatedAt = new Date(firestoreData.updatedAt);
+      // Convert ISO strings to Firestore Timestamps
+      if (firestoreData.createdAt) {
+        if (typeof firestoreData.createdAt === 'string') {
+          firestoreData.createdAt = Timestamp.fromDate(new Date(firestoreData.createdAt));
+        }
+      } else {
+        firestoreData.createdAt = Timestamp.now();
       }
       
-      const docRef = await addDoc(collection(db, collectionName), {
-        ...firestoreData,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+      if (firestoreData.updatedAt) {
+        if (typeof firestoreData.updatedAt === 'string') {
+          firestoreData.updatedAt = Timestamp.fromDate(new Date(firestoreData.updatedAt));
+        }
+      } else {
+        firestoreData.updatedAt = Timestamp.now();
+      }
+      
+      // Remove undefined values that Firestore doesn't accept
+      Object.keys(firestoreData).forEach(key => {
+        if (firestoreData[key] === undefined) {
+          delete firestoreData[key];
+        }
       });
       
-      return { data: { id: docRef.id, ...data } };
+      // Add to Firestore
+      const docRef = await addDoc(collection(db, collectionName), firestoreData);
+      
+      console.log(`✅ Document created in ${collectionName} with ID:`, docRef.id);
+      
+      return { 
+        data: { 
+          id: docRef.id, 
+          ...data
+        } 
+      };
     } catch (error) {
       console.error(`Error creating document:`, error);
       throw error;
@@ -511,7 +535,10 @@ class FirebaseApi {
     throw new Error(`Unknown GET endpoint: ${endpoint}`);
   }
 
+  // ✅ ADDED console log for debugging
   async post(endpoint, data) {
+    console.log(`📤 POST request to ${endpoint}:`, data);
+    
     if (endpoint === '/attendance/mark') {
       return await this.markAttendance(data);
     }

@@ -40,7 +40,7 @@ function CriterionRow({ label, value, onChange }) {
 }
 
 // Full Rating Form
-export function RatingForm({ ratedUserId, courseId, onSuccess, onCancel }) {
+export function RatingForm({ ratedUserId, courseId, onSuccess, onCancel, isSubmitting = false }) {
   const [scores, setScores] = useState({
     teachingQuality: 0,
     communication: 0,
@@ -69,12 +69,16 @@ export function RatingForm({ ratedUserId, courseId, onSuccess, onCancel }) {
       Alert.alert('Incomplete Rating', 'Please rate all criteria before submitting.');
       return;
     }
+    
     setLoading(true);
     try {
-      // This will be connected to your API
-      console.log('Submitting rating:', { ratedUserId, courseId, scores, comment });
-      Alert.alert('Success', 'Rating submitted successfully!');
-      onSuccess?.();
+      // Call onSuccess with the rating data
+      if (onSuccess) {
+        await onSuccess({
+          scores,
+          comment,
+        });
+      }
     } catch (err) {
       Alert.alert('Error', err.message || 'Failed to submit rating.');
     } finally {
@@ -103,8 +107,20 @@ export function RatingForm({ ratedUserId, courseId, onSuccess, onCancel }) {
         style={{ marginTop: spacing.md }}
       />
       <View style={styles.formActions}>
-        <Button title="Cancel" variant="secondary" onPress={onCancel} style={{ flex: 1, marginRight: spacing.sm }} />
-        <Button title="Submit Rating" onPress={handleSubmit} loading={loading} style={{ flex: 2 }} />
+        <Button 
+          title="Cancel" 
+          variant="secondary" 
+          onPress={onCancel} 
+          style={{ flex: 1, marginRight: spacing.sm }} 
+          disabled={loading || isSubmitting}
+        />
+        <Button 
+          title="Submit Rating" 
+          onPress={handleSubmit} 
+          loading={loading || isSubmitting} 
+          style={{ flex: 2 }} 
+          disabled={loading || isSubmitting}
+        />
       </View>
     </ScrollView>
   );
@@ -126,28 +142,69 @@ export function RatingBar({ label, value, maxValue = 5 }) {
 
 // Rating Card Component
 export function RatingCard({ rating, onPress }) {
+  // Calculate overall rating from aspects if available, otherwise use rating field
+  const overallRating = rating.rating || rating.overall || 
+    (rating.aspects && Object.keys(rating.aspects).length > 0 
+      ? Object.values(rating.aspects).reduce((a, b) => a + b, 0) / Object.keys(rating.aspects).length 
+      : 0);
+  
   return (
     <TouchableOpacity style={styles.ratingCard} onPress={() => onPress?.(rating)} activeOpacity={0.8}>
       <View style={styles.ratingHeader}>
         <View style={styles.ratingUser}>
           <View style={styles.userAvatar}>
-            <Text style={styles.userAvatarText}>{rating.lecturer?.name?.charAt(0) || 'L'}</Text>
+            <Text style={styles.userAvatarText}>
+              {rating.ratedUserName?.charAt(0) || rating.lecturer?.name?.charAt(0) || 'L'}
+            </Text>
           </View>
-          <View>
-            <Text style={styles.lecturerName}>{rating.lecturer?.name || 'Lecturer'}</Text>
-            <Text style={styles.courseName}>{rating.course?.name || 'Course'}</Text>
+          <View style={styles.userInfo}>
+            <Text style={styles.lecturerName}>
+              {rating.ratedUserName || rating.lecturer?.name || 'Lecturer'}
+            </Text>
+            <Text style={styles.courseName}>
+              {rating.courseName || rating.course?.name || rating.courseCode || 'Course'}
+            </Text>
+            {rating.courseCode && rating.courseName && (
+              <Text style={styles.courseCodeText}>{rating.courseCode}</Text>
+            )}
           </View>
         </View>
         <View style={styles.ratingScore}>
-          <Text style={styles.ratingNumber}>{rating.overall}</Text>
-          <StarRating value={rating.overall} readonly size={16} />
+          <Text style={styles.ratingNumber}>{typeof overallRating === 'number' ? overallRating.toFixed(1) : overallRating}</Text>
+          <StarRating value={Math.round(overallRating)} readonly size={16} />
         </View>
       </View>
-      {rating.comment && (
-        <Text style={styles.ratingComment}>"{rating.comment}"</Text>
+      
+      {/* Show rating aspects summary */}
+      {rating.aspects && Object.keys(rating.aspects).length > 0 && (
+        <View style={styles.aspectsContainer}>
+          {Object.entries(rating.aspects).slice(0, 3).map(([key, value]) => (
+            <View key={key} style={styles.aspectBadge}>
+              <Text style={styles.aspectText}>
+                {key.replace(/([A-Z])/g, ' $1').trim()}: {value}★
+              </Text>
+            </View>
+          ))}
+          {Object.keys(rating.aspects).length > 3 && (
+            <View style={styles.aspectBadge}>
+              <Text style={styles.aspectText}>+{Object.keys(rating.aspects).length - 3} more</Text>
+            </View>
+          )}
+        </View>
       )}
+      
+      {rating.comment ? (
+        <Text style={styles.ratingComment}>"{rating.comment}"</Text>
+      ) : (
+        <Text style={styles.noCommentText}>No comment provided</Text>
+      )}
+      
       <Text style={styles.ratingDate}>
-        {new Date(rating.createdAt).toLocaleDateString()}
+        {rating.createdAt ? new Date(rating.createdAt).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        }) : 'Just now'}
       </Text>
     </TouchableOpacity>
   );
@@ -261,12 +318,13 @@ const styles = StyleSheet.create({
   ratingHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: spacing.sm,
   },
   ratingUser: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   userAvatar: {
     width: 40,
@@ -281,6 +339,9 @@ const styles = StyleSheet.create({
     ...typography.h4,
     color: COLORS.primary,
   },
+  userInfo: {
+    flex: 1,
+  },
   lecturerName: {
     ...typography.body,
     fontWeight: '600',
@@ -290,6 +351,11 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: COLORS.textSecondary,
   },
+  courseCodeText: {
+    ...typography.caption,
+    color: COLORS.primary,
+    fontSize: 10,
+  },
   ratingScore: {
     alignItems: 'flex-end',
   },
@@ -297,6 +363,30 @@ const styles = StyleSheet.create({
     ...typography.h4,
     color: COLORS.primary,
     fontWeight: '700',
+  },
+  aspectsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginVertical: spacing.xs,
+  },
+  aspectBadge: {
+    backgroundColor: COLORS.surfaceLight,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: 12,
+    marginRight: spacing.xs,
+    marginBottom: spacing.xs,
+  },
+  aspectText: {
+    ...typography.caption,
+    color: COLORS.textSecondary,
+    fontSize: 11,
+  },
+  noCommentText: {
+    ...typography.bodySmall,
+    color: COLORS.textDisabled,
+    fontStyle: 'italic',
+    marginVertical: spacing.sm,
   },
   ratingComment: {
     ...typography.body,
@@ -308,6 +398,7 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: COLORS.textDisabled,
     textAlign: 'right',
+    marginTop: spacing.xs,
   },
   summaryContainer: {
     backgroundColor: COLORS.cardBackground,

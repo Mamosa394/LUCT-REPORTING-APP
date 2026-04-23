@@ -5,7 +5,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer, LoadingSpinner, Input, Button, Card } from '../../src/components/UI';
 import { COLORS, spacing, typography } from '../../config/theme';
-// Import logoutUser (the async thunk) instead of the synchronous logout action
 import { logoutUser, updateUserProfile } from '../../src/store/authSlice';
 
 export default function StudentProfile({ navigation }) {
@@ -17,9 +16,8 @@ export default function StudentProfile({ navigation }) {
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
-    phone: user?.phone || '',
     studentId: user?.studentId || '',
-    department: user?.department || '',
+    faculty: user?.faculty || user?.department || '',
   });
 
   const handleUpdate = async () => {
@@ -27,8 +25,7 @@ export default function StudentProfile({ navigation }) {
     try {
       const result = await dispatch(updateUserProfile({
         name: formData.name,
-        phone: formData.phone,
-        department: formData.department,
+        faculty: formData.faculty,
       })).unwrap();
       
       Alert.alert('Success', 'Profile updated successfully');
@@ -52,9 +49,7 @@ export default function StudentProfile({ navigation }) {
           onPress: async () => {
             setIsLoggingOut(true);
             try {
-              // Using logoutUser thunk allows .unwrap() to resolve correctly
               await dispatch(logoutUser()).unwrap();
-              // No need to navigate - AppNavigator will automatically show Login screen
             } catch (error) {
               console.error('Logout error:', error);
               Alert.alert('Error', 'Failed to logout. Please try again.');
@@ -82,12 +77,6 @@ export default function StudentProfile({ navigation }) {
                 {user?.name?.charAt(0).toUpperCase() || 'U'}
               </Text>
             </View>
-            <TouchableOpacity
-              style={styles.editIcon}
-              onPress={() => setIsEditing(!isEditing)}
-            >
-              <Ionicons name="camera-outline" size={20} color={COLORS.text} />
-            </TouchableOpacity>
           </View>
           <Text style={styles.userName}>{user?.name}</Text>
           <Text style={styles.userRole}>Student</Text>
@@ -114,23 +103,16 @@ export default function StudentProfile({ navigation }) {
           />
           
           <Input
-            label="Phone Number"
-            value={formData.phone}
-            onChangeText={(text) => setFormData({ ...formData, phone: text })}
-            editable={false}
-            keyboardType="phone-pad"
-          />
-          
-          <Input
             label="Student ID"
             value={formData.studentId}
             editable={false}
           />
           
           <Input
-            label="Department"
-            value={formData.department}
-            editable={false}
+            label="Faculty"
+            value={formData.faculty}
+            editable={isEditing}
+            onChangeText={(text) => setFormData({ ...formData, faculty: text })}
           />
           
           {isEditing && (
@@ -143,9 +125,8 @@ export default function StudentProfile({ navigation }) {
                   setFormData({
                     name: user?.name || '',
                     email: user?.email || '',
-                    phone: user?.phone || '',
                     studentId: user?.studentId || '',
-                    department: user?.department || '',
+                    faculty: user?.faculty || user?.department || '',
                   });
                 }}
                 style={styles.button}
@@ -159,35 +140,6 @@ export default function StudentProfile({ navigation }) {
               />
             </View>
           )}
-        </Card>
-
-        {/* Account Actions */}
-        <Card style={styles.actionsCard}>
-          <Text style={styles.sectionTitle}>Account Actions</Text>
-          
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('ChangePassword')}>
-            <View style={styles.actionLeft}>
-              <Ionicons name="lock-closed-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.actionText}>Change Password</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Notifications')}>
-            <View style={styles.actionLeft}>
-              <Ionicons name="notifications-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.actionText}>Notification Settings</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('PrivacyPolicy')}>
-            <View style={styles.actionLeft}>
-              <Ionicons name="shield-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.actionText}>Privacy Policy</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-          </TouchableOpacity>
         </Card>
 
         {/* Logout Button */}
@@ -269,26 +221,6 @@ const styles = StyleSheet.create({
   button: {
     flex: 1,
     marginHorizontal: spacing.xs,
-  },
-  actionsCard: {
-    marginBottom: spacing.md,
-  },
-  actionItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  actionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  actionText: {
-    ...typography.body,
-    color: COLORS.text,
-    marginLeft: spacing.sm,
   },
   logoutButton: {
     marginTop: spacing.md,

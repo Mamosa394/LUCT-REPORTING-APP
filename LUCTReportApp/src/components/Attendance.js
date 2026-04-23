@@ -73,34 +73,6 @@ export function AttendanceLegend() {
   );
 }
 
-// Attendance Summary Card
-export function AttendanceSummaryCard({ summary }) {
-  const { total = 0, present = 0, absent = 0, late = 0, excused = 0, percentage = 0 } = summary;
-
-  const getPercentageColor = () => {
-    if (percentage >= 75) return COLORS.success;
-    if (percentage >= 50) return COLORS.warning;
-    return COLORS.error;
-  };
-
-  return (
-    <View style={styles.summaryCard}>
-      <View style={styles.percentageCircle}>
-        <Text style={[styles.percentageText, { color: getPercentageColor() }]}>
-          {Math.round(percentage)}%
-        </Text>
-        <Text style={styles.percentageLabel}>Attendance</Text>
-      </View>
-      <View style={styles.statsGrid}>
-        <StatItem label="Total" value={total} color={COLORS.primary} />
-        <StatItem label="Present" value={present} color={COLORS.success} />
-        <StatItem label="Absent" value={absent} color={COLORS.error} />
-        <StatItem label="Late" value={late} color={COLORS.warning} />
-      </View>
-    </View>
-  );
-}
-
 function StatItem({ label, value, color }) {
   return (
     <View style={styles.statItem}>

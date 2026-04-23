@@ -1,10 +1,10 @@
+// src/store/index.js
 import { configureStore } from '@reduxjs/toolkit';
-import authReducer from '../../src/store/authSlice';
-import attendanceReducer from '../../src/store/attendanceSlice';
-import coursesReducer from '../../src/store/courseSlice';
-import monitoringReducer from '../../src/store/monitoringSlice';
-
-// Removed the conflicting local auth slice
+import authReducer from './authSlice';
+import attendanceReducer from './attendanceSlice';
+import coursesReducer from './courseSlice';
+import monitoringReducer from './monitoringSlice';
+import ratingsReducer from './Ratingsslice';  
 
 const store = configureStore({
   reducer: {
@@ -12,7 +12,28 @@ const store = configureStore({
     attendance: attendanceReducer, // Handles attendance records and stats
     courses: coursesReducer,      // Handles courses and modules
     monitoring: monitoringReducer, // Handles monitoring data and stats
+    ratings: ratingsReducer,      // ✅ Handles ratings and analytics
   },
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: {
+        // Ignore these action types for serializable check
+        ignoredActions: [
+          'auth/fetchUsers/fulfilled',
+          'auth/fetchLecturers/fulfilled',
+          'ratings/fetchRatings/fulfilled',
+          'ratings/submitRating/fulfilled',
+          'attendance/markAttendance/fulfilled',
+        ],
+        // Ignore these field paths in state
+        ignoredPaths: [
+          'auth.users',
+          'auth.lecturers',
+          'ratings.ratings',
+          'attendance.records',
+        ],
+      },
+    }),
 });
 
 export default store;
