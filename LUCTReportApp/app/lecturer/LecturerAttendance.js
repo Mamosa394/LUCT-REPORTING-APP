@@ -214,7 +214,7 @@ export default function LecturerAttendance({ navigation, route }) {
                     </View>
                     <View style={styles.studentDetails}>
                       <Text style={styles.studentName}>{student.name}</Text>
-                      <Text style={styles.studentId}>{student.studentId || studentId}</Text>
+                      
                     </View>
                   </View>
                   <View style={[styles.statusBadge, { backgroundColor: getStatusColor(status) + '20' }]}>

@@ -108,9 +108,9 @@ export default function PRLDashboard({ navigation }) {
         </View>
 
         <View style={styles.statsRow}>
-          <StatsCard title="Students" value={stats.totalStudents} icon="👨‍🎓" color={COLORS.primary} />
-          <StatsCard title="Lecturers" value={stats.totalLecturers} icon="👨‍🏫" color={COLORS.success} />
-          <StatsCard title="Pending Reviews" value={stats.reportsToReview} icon="📋" color={COLORS.warning} />
+          <StatsCard icon={<Ionicons name="people-outline" size={15} color={COLORS.primary} />} title="Students" value={stats.totalStudents} color={COLORS.primary} />
+          <StatsCard title="Lecturers" value={stats.totalLecturers} icon={<Ionicons name="id-card-outline" size={15} color={COLORS.primary} />} color={COLORS.success} />
+          <StatsCard title="Pending Reviews" value={stats.reportsToReview} icon={<Ionicons name="documents-outline" size={15} color={COLORS.info} />} color={COLORS.warning} />
         </View>
 
         <Card style={styles.sectionCard}>
