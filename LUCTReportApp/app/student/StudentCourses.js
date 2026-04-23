@@ -1,5 +1,6 @@
-// app/student/Courses.js
-import React, { useEffect, useState } from 'react';
+// app/student/StudentCourses.js - Fixed with proper SafeAreaView
+
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,33 +10,56 @@ import {
   RefreshControl,
   TextInput
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context'; // ✅ Correct import
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
-import { ScreenContainer, LoadingSpinner, Card } from '../../src/components/UI';
+import { LoadingSpinner, Card } from '../../src/components/UI';
 import { COLORS, spacing, typography } from '../../config/theme';
 import { fetchCourses } from '../../src/store/courseSlice';
-import { 
-  fetchCourseMonitoring, 
-  fetchCourseProgress,
-  selectCourseMonitoring,
-  selectCourseProgress 
-} from '../../src/store/monitoringSlice';
 
-export default function StudentCourses({ navigation }) {
+export default function StudentCourses({ navigation, route }) {
   const dispatch = useDispatch();
+  const flatListRef = useRef(null);
+  
   const { courses = [], isLoading } = useSelector(state => state.courses || { courses: [], isLoading: false });
   const { user } = useSelector(state => state.auth || { user: null });
-  const courseMonitoring = useSelector(selectCourseMonitoring);
-  const courseProgress = useSelector(selectCourseProgress);
   
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedCourseId, setExpandedCourseId] = useState(null);
-  const [loadingMonitoring, setLoadingMonitoring] = useState(false);
+  const [selectedCourseId, setSelectedCourseId] = useState(null);
 
   useEffect(() => {
     loadCourses();
   }, []);
+
+  // Handle navigation params when coming from dashboard
+  useEffect(() => {
+    const courseId = route.params?.selectedCourseId;
+    const courseName = route.params?.courseName;
+    
+    if (courseId && courses.length > 0) {
+      console.log('📚 [StudentCourses] Received course from dashboard:', courseId, courseName);
+      setSelectedCourseId(courseId);
+      
+      const course = courses.find(c => c.id === courseId);
+      if (course) {
+        setExpandedCourseId(courseId);
+        
+        // Scroll to the course
+        const index = courses.findIndex(c => c.id === courseId);
+        if (index !== -1 && flatListRef.current) {
+          setTimeout(() => {
+            flatListRef.current?.scrollToIndex({ 
+              index, 
+              animated: true,
+              viewPosition: 0.1 
+            });
+          }, 300);
+        }
+      }
+    }
+  }, [route.params, courses]);
 
   const loadCourses = async () => {
     try {
@@ -51,38 +75,12 @@ export default function StudentCourses({ navigation }) {
     setRefreshing(false);
   };
 
-  const handleCoursePress = async (course) => {
+  const handleCoursePress = (course) => {
     if (expandedCourseId === course.id) {
       setExpandedCourseId(null);
     } else {
       setExpandedCourseId(course.id);
-      setLoadingMonitoring(true);
-      
-      // Fetch monitoring data for this course
-      try {
-        await Promise.all([
-          dispatch(fetchCourseMonitoring({ 
-            courseId: course.id, 
-            studentId: user?.id 
-          })).unwrap(),
-          dispatch(fetchCourseProgress({ 
-            courseId: course.id, 
-            studentId: user?.id 
-          })).unwrap()
-        ]);
-      } catch (error) {
-        console.error('Error fetching monitoring:', error);
-      } finally {
-        setLoadingMonitoring(false);
-      }
     }
-  };
-
-  const navigateToMonitoring = (course) => {
-    navigation.navigate('CourseMonitoring', { 
-      courseId: course.id, 
-      courseName: course.name 
-    });
   };
 
   const navigateToAttendance = (course) => {
@@ -95,60 +93,29 @@ export default function StudentCourses({ navigation }) {
   const navigateToRatings = (course) => {
     navigation.navigate('Ratings', { 
       courseId: course.id, 
-      lecturerId: course.lecturer?.id 
+      lecturerId: course.lecturerId 
     });
   };
 
   const filteredCourses = courses.filter(course => 
     course.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     course.code?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    course.lecturer?.name?.toLowerCase().includes(searchQuery.toLowerCase())
+    course.lecturerName?.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
-  const getCourseMonitoringData = (courseId) => {
-    // Use real monitoring data if available, otherwise use defaults
-    if (courseMonitoring && expandedCourseId === courseId) {
-      return {
-        attendanceRate: courseMonitoring.attendance || 75,
-        progressPercentage: courseMonitoring.overallProgress || 60,
-        assignments: courseMonitoring.assignments || 80,
-        participation: courseMonitoring.participation || 70
-      };
-    }
-    
-    // If we have progress data separately
-    if (courseProgress && expandedCourseId === courseId) {
-      return {
-        attendanceRate: courseProgress.attendanceRate || 75,
-        progressPercentage: courseProgress.overallProgress || 60,
-        assignments: courseProgress.assignmentCompletion || 80,
-        participation: courseProgress.participation || 70
-      };
-    }
-    
-    // Find course-specific data or use defaults
-    const course = courses.find(c => c.id === courseId);
-    return {
-      attendanceRate: course?.attendanceRate || 75,
-      progressPercentage: course?.progress || 60,
-      assignments: course?.assignmentScore || 80,
-      participation: course?.participation || 70
-    };
-  };
 
   const renderCourseItem = ({ item: course }) => {
     const isExpanded = expandedCourseId === course.id;
-    const monitoringData = getCourseMonitoringData(course.id);
-    const attendanceRate = monitoringData.attendanceRate;
-    const progressPercentage = monitoringData.progressPercentage;
+    const isSelected = selectedCourseId === course.id;
 
     return (
-      <Card style={styles.courseCard}>
+      <Card style={[
+        styles.courseCard,
+        isSelected && styles.selectedCourseCard
+      ]}>
         <TouchableOpacity
           style={styles.courseHeader}
           onPress={() => handleCoursePress(course)}
           activeOpacity={0.7}
-          disabled={loadingMonitoring}
         >
           <View style={styles.courseInfo}>
             <View style={styles.courseCodeContainer}>
@@ -156,168 +123,103 @@ export default function StudentCourses({ navigation }) {
             </View>
             <Text style={styles.courseName}>{course.name || 'Unnamed Course'}</Text>
             <Text style={styles.lecturerName}>
-              {course.lecturer?.name || 'Lecturer not assigned'}
+              {course.lecturerName || 'Lecturer not assigned'}
             </Text>
           </View>
           <View style={styles.expandIconContainer}>
-            {loadingMonitoring && isExpanded ? (
-              <LoadingSpinner size="small" />
-            ) : (
-              <Ionicons 
-                name={isExpanded ? 'chevron-up' : 'chevron-down'} 
-                size={24} 
-                color={COLORS.textSecondary} 
-              />
-            )}
+            <Ionicons 
+              name={isExpanded ? 'chevron-up' : 'chevron-down'} 
+              size={24} 
+              color={COLORS.textSecondary} 
+            />
           </View>
         </TouchableOpacity>
 
-        {/* Quick Stats Row */}
+        {/* Course Info Row */}
         <View style={styles.quickStats}>
           <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: attendanceRate >= 75 ? COLORS.success : COLORS.warning }]}>
-              {attendanceRate}%
-            </Text>
-            <Text style={styles.statLabel}>Attendance</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{course.credits || 3}</Text>
+            <Ionicons name="book-outline" size={20} color={COLORS.primary} />
+            <Text style={styles.statValue}>{course.credits || 0}</Text>
             <Text style={styles.statLabel}>Credits</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: progressPercentage >= 70 ? COLORS.success : COLORS.warning }]}>
-              {progressPercentage}%
-            </Text>
-            <Text style={styles.statLabel}>Progress</Text>
+            <Ionicons name="calendar-outline" size={20} color={COLORS.info} />
+            <Text style={styles.statValue}>{course.semester || 'N/A'}</Text>
+            <Text style={styles.statLabel}>Semester</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Ionicons name="business-outline" size={20} color={COLORS.success} />
+            <Text style={styles.statValue}>{course.department?.slice(0, 4) || 'N/A'}</Text>
+            <Text style={styles.statLabel}>Dept</Text>
           </View>
         </View>
 
-        {/* Progress Bar */}
-        <View style={styles.progressContainer}>
-          <View style={[
-            styles.progressBar, 
-            { 
-              width: `${progressPercentage}%`,
-              backgroundColor: progressPercentage >= 70 ? COLORS.success : 
-                             progressPercentage >= 50 ? COLORS.warning : COLORS.error
-            }
-          ]} />
-        </View>
-
-        {/* Expanded Content - Monitoring Integration */}
+        {/* Expanded Content */}
         {isExpanded && (
           <View style={styles.expandedContent}>
             <View style={styles.divider} />
             
-            {/* Monitoring Summary */}
-            <View style={styles.monitoringSection}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Course Monitoring</Text>
-                {loadingMonitoring && <LoadingSpinner size="small" />}
+            {/* Course Details */}
+            <View style={styles.detailsSection}>
+              <Text style={styles.sectionTitle}>Course Details</Text>
+              
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>Department:</Text>
+                <Text style={styles.detailValue}>{course.department || 'Not specified'}</Text>
               </View>
               
-              <TouchableOpacity 
-                style={styles.monitoringItem}
-                onPress={() => navigateToMonitoring(course)}
-              >
-                <View style={styles.monitoringIcon}>
-                  <Ionicons name="analytics-outline" size={20} color={COLORS.primary} />
-                </View>
-                <View style={styles.monitoringContent}>
-                  <Text style={styles.monitoringTitle}>View Full Analytics</Text>
-                  <Text style={styles.monitoringSubtitle}>
-                    Track your progress and performance
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-              </TouchableOpacity>
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>Stream:</Text>
+                <Text style={styles.detailValue}>{course.stream || 'Not specified'}</Text>
+              </View>
+              
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>Year:</Text>
+                <Text style={styles.detailValue}>{course.year || 'Not specified'}</Text>
+              </View>
+              
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>Lecturer Email:</Text>
+                <Text style={styles.detailValue}>{course.lecturerEmail || 'Not available'}</Text>
+              </View>
+            </View>
 
+            {/* Quick Actions */}
+            <View style={styles.actionsSection}>
+              <Text style={styles.sectionTitle}>Quick Actions</Text>
+              
               <TouchableOpacity 
-                style={styles.monitoringItem}
+                style={styles.actionItem}
                 onPress={() => navigateToAttendance(course)}
               >
-                <View style={styles.monitoringIcon}>
+                <View style={[styles.actionIcon, { backgroundColor: COLORS.success + '20' }]}>
                   <Ionicons name="calendar-outline" size={20} color={COLORS.success} />
                 </View>
-                <View style={styles.monitoringContent}>
-                  <Text style={styles.monitoringTitle}>Attendance Tracker</Text>
-                  <Text style={styles.monitoringSubtitle}>
-                    Current: {attendanceRate}% attendance rate
+                <View style={styles.actionContent}>
+                  <Text style={styles.actionTitle}>View Attendance</Text>
+                  <Text style={styles.actionSubtitle}>
+                    Check your attendance records
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
               </TouchableOpacity>
 
               <TouchableOpacity 
-                style={styles.monitoringItem}
+                style={styles.actionItem}
                 onPress={() => navigateToRatings(course)}
               >
-                <View style={styles.monitoringIcon}>
+                <View style={[styles.actionIcon, { backgroundColor: COLORS.warning + '20' }]}>
                   <Ionicons name="star-outline" size={20} color={COLORS.warning} />
                 </View>
-                <View style={styles.monitoringContent}>
-                  <Text style={styles.monitoringTitle}>Rate This Course</Text>
-                  <Text style={styles.monitoringSubtitle}>
+                <View style={styles.actionContent}>
+                  <Text style={styles.actionTitle}>Rate Course</Text>
+                  <Text style={styles.actionSubtitle}>
                     Share your feedback on this course
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-              </TouchableOpacity>
-            </View>
-
-            {/* Performance Metrics Preview */}
-            {!loadingMonitoring && courseMonitoring && (
-              <View style={styles.performancePreview}>
-                <Text style={styles.sectionTitle}>Performance Overview</Text>
-                <View style={styles.metricsRow}>
-                  <View style={styles.metricItem}>
-                    <Text style={styles.metricValue}>{monitoringData.assignments}%</Text>
-                    <Text style={styles.metricLabel}>Assignments</Text>
-                  </View>
-                  <View style={styles.metricItem}>
-                    <Text style={styles.metricValue}>{monitoringData.participation}%</Text>
-                    <Text style={styles.metricLabel}>Participation</Text>
-                  </View>
-                  <View style={styles.metricItem}>
-                    <Text style={styles.metricValue}>{course.quizzes || 0}</Text>
-                    <Text style={styles.metricLabel}>Quizzes</Text>
-                  </View>
-                </View>
-              </View>
-            )}
-
-            {/* Course Schedule */}
-            <View style={styles.scheduleSection}>
-              <Text style={styles.sectionTitle}>Schedule</Text>
-              <View style={styles.scheduleItem}>
-                <Ionicons name="time-outline" size={16} color={COLORS.textSecondary} />
-                <Text style={styles.scheduleText}>
-                  {course.schedule || 'Mon, Wed 10:00 AM - 11:30 AM'}
-                </Text>
-              </View>
-              <View style={styles.scheduleItem}>
-                <Ionicons name="location-outline" size={16} color={COLORS.textSecondary} />
-                <Text style={styles.scheduleText}>
-                  {course.location || 'Room 301, Main Building'}
-                </Text>
-              </View>
-            </View>
-
-            {/* Action Buttons */}
-            <View style={styles.actionButtons}>
-              <TouchableOpacity 
-                style={[styles.actionButton, styles.primaryButton]}
-                onPress={() => navigation.navigate('CourseMaterials', { courseId: course.id })}
-              >
-                <Text style={styles.primaryButtonText}>View Materials</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.actionButton, styles.secondaryButton]}
-                onPress={() => navigation.navigate('Assignments', { courseId: course.id })}
-              >
-                <Text style={styles.secondaryButtonText}>Assignments</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -326,75 +228,94 @@ export default function StudentCourses({ navigation }) {
     );
   };
 
-  if (isLoading && !refreshing) {
+  // Get item layout for scrollToIndex
+  const getItemLayout = (data, index) => ({
+    length: 150,
+    offset: 150 * index,
+    index,
+  });
+
+  // Header Component for FlatList
+  const ListHeaderComponent = () => (
+    <>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>My Courses</Text>
+        <Text style={styles.headerSubtitle}>
+          {filteredCourses.length} {filteredCourses.length === 1 ? 'course' : 'courses'} enrolled
+        </Text>
+      </View>
+
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <Ionicons name="search-outline" size={20} color={COLORS.textSecondary} style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search courses by name, code, or lecturer..."
+          placeholderTextColor={COLORS.textSecondary}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <Ionicons name="close-circle" size={20} color={COLORS.textSecondary} />
+          </TouchableOpacity>
+        )}
+      </View>
+    </>
+  );
+
+  // Empty Component
+  const ListEmptyComponent = () => (
+    <View style={styles.emptyState}>
+      <Ionicons name="book-outline" size={64} color={COLORS.textDisabled} />
+      <Text style={styles.emptyStateTitle}>No Courses Found</Text>
+      <Text style={styles.emptyStateText}>
+        {searchQuery ? 'Try adjusting your search' : 'You are not enrolled in any courses yet'}
+      </Text>
+    </View>
+  );
+
+  if (isLoading && !refreshing && courses.length === 0) {
     return <LoadingSpinner fullScreen />;
   }
 
   return (
-    <ScreenContainer>
-      <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>My Courses</Text>
-          <Text style={styles.headerSubtitle}>
-            {filteredCourses.length} {filteredCourses.length === 1 ? 'course' : 'courses'} enrolled
-          </Text>
-        </View>
-
-        {/* Search Bar - Extra Credit Feature */}
-        <View style={styles.searchContainer}>
-          <Ionicons name="search-outline" size={20} color={COLORS.textSecondary} style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search courses by name, code, or lecturer..."
-            placeholderTextColor={COLORS.textSecondary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <FlatList
+        ref={flatListRef}
+        data={filteredCourses}
+        renderItem={renderCourseItem}
+        keyExtractor={(item) => item.id || Math.random().toString()}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        getItemLayout={getItemLayout}
+        ListHeaderComponent={ListHeaderComponent}
+        ListEmptyComponent={ListEmptyComponent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={COLORS.primary}
+            colors={[COLORS.primary]}
           />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color={COLORS.textSecondary} />
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* Course List */}
-        <FlatList
-          data={filteredCourses}
-          renderItem={renderCourseItem}
-          keyExtractor={(item) => item.id || Math.random().toString()}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={COLORS.primary}
-              colors={[COLORS.primary]}
-            />
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Ionicons name="book-outline" size={64} color={COLORS.textDisabled} />
-              <Text style={styles.emptyStateTitle}>No Courses Found</Text>
-              <Text style={styles.emptyStateText}>
-                {searchQuery ? 'Try adjusting your search' : 'You are not enrolled in any courses yet'}
-              </Text>
-            </View>
-          }
-        />
-      </View>
-    </ScreenContainer>
+        }
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  listContent: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xl,
+  },
   header: {
-    padding: spacing.lg,
+    paddingTop: spacing.lg,
     paddingBottom: spacing.md,
   },
   headerTitle: {
@@ -410,7 +331,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surfaceLight,
-    marginHorizontal: spacing.lg,
     marginBottom: spacing.md,
     paddingHorizontal: spacing.md,
     borderRadius: 12,
@@ -426,14 +346,14 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     paddingVertical: spacing.md,
   },
-  listContent: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xl,
-  },
   courseCard: {
     marginBottom: spacing.md,
     padding: 0,
     overflow: 'hidden',
+  },
+  selectedCourseCard: {
+    borderWidth: 2,
+    borderColor: COLORS.primary,
   },
   courseHeader: {
     flexDirection: 'row',
@@ -480,29 +400,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statValue: {
-    ...typography.h4,
+    ...typography.body,
     color: COLORS.text,
-    fontWeight: '700',
+    fontWeight: '600',
+    marginTop: spacing.xs,
   },
   statLabel: {
     ...typography.caption,
     color: COLORS.textSecondary,
-    marginTop: spacing.xs,
+    marginTop: 2,
   },
   statDivider: {
     width: 1,
     backgroundColor: COLORS.border,
-  },
-  progressContainer: {
-    height: 4,
-    backgroundColor: COLORS.border,
-    marginHorizontal: spacing.md,
-    marginBottom: spacing.md,
-    borderRadius: 2,
-  },
-  progressBar: {
-    height: '100%',
-    borderRadius: 2,
   },
   expandedContent: {
     paddingHorizontal: spacing.md,
@@ -513,14 +423,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.border,
     marginBottom: spacing.md,
   },
-  monitoringSection: {
+  detailsSection: {
     marginBottom: spacing.md,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.sm,
   },
   sectionTitle: {
     ...typography.body,
@@ -528,96 +432,48 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: spacing.sm,
   },
-  monitoringItem: {
+  detailItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.xs,
+  },
+  detailLabel: {
+    ...typography.bodySmall,
+    color: COLORS.textSecondary,
+  },
+  detailValue: {
+    ...typography.bodySmall,
+    color: COLORS.text,
+    fontWeight: '500',
+  },
+  actionsSection: {
+    marginTop: spacing.sm,
+  },
+  actionItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: spacing.sm,
   },
-  monitoringIcon: {
+  actionIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: COLORS.surfaceLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
   },
-  monitoringContent: {
+  actionContent: {
     flex: 1,
   },
-  monitoringTitle: {
-    ...typography.body,
+  actionTitle: {
+    ...typography.bodySmall,
     color: COLORS.text,
     fontWeight: '500',
   },
-  monitoringSubtitle: {
+  actionSubtitle: {
     ...typography.caption,
     color: COLORS.textSecondary,
     marginTop: 2,
-  },
-  performancePreview: {
-    marginBottom: spacing.md,
-  },
-  metricsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: COLORS.surfaceLight,
-    borderRadius: 8,
-    padding: spacing.md,
-  },
-  metricItem: {
-    alignItems: 'center',
-  },
-  metricValue: {
-    ...typography.h4,
-    color: COLORS.text,
-    fontWeight: '600',
-  },
-  metricLabel: {
-    ...typography.caption,
-    color: COLORS.textSecondary,
-    marginTop: spacing.xs,
-  },
-  scheduleSection: {
-    marginBottom: spacing.md,
-  },
-  scheduleItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.xs,
-  },
-  scheduleText: {
-    ...typography.bodySmall,
-    color: COLORS.textSecondary,
-    marginLeft: spacing.sm,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.sm,
-  },
-  actionButton: {
-    flex: 1,
-    paddingVertical: spacing.sm,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  primaryButton: {
-    backgroundColor: COLORS.primary,
-  },
-  primaryButtonText: {
-    ...typography.bodySmall,
-    color: COLORS.buttonPrimaryText,
-    fontWeight: '600',
-  },
-  secondaryButton: {
-    backgroundColor: COLORS.surfaceLight,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  secondaryButtonText: {
-    ...typography.bodySmall,
-    color: COLORS.text,
   },
   emptyState: {
     alignItems: 'center',

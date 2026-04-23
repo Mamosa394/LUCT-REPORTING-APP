@@ -1,4 +1,5 @@
-﻿// app/navigation/AppNavigator.js
+﻿// app/navigation/AppNavigator.js - Fixed version
+
 import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -51,8 +52,16 @@ import PLProfile from '../pl/plProfile';
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// --- Tab Navigators ---
+// --- Student Stack Navigator (FIXED - removed duplicate) ---
+function StudentStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="StudentTabs" component={StudentTabs} />
+    </Stack.Navigator>
+  );
+}
 
+// --- Student Tab Navigator ---
 function StudentTabs() {
   return (
     <Tab.Navigator
@@ -82,6 +91,7 @@ function StudentTabs() {
   );
 }
 
+// --- Lecturer Stack Navigator ---
 function LecturerStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -108,10 +118,22 @@ function LecturerStack() {
           headerTintColor: COLORS.primary,
         }}
       />
+      <Stack.Screen 
+        name="LecturerReports" 
+        component={LecturerReports}
+        options={{ 
+          headerShown: true,
+          title: 'My Reports',
+          headerStyle: { backgroundColor: COLORS.headerBackground },
+          headerTitleStyle: { color: COLORS.headerText },
+          headerTintColor: COLORS.primary,
+        }}
+      />
     </Stack.Navigator>
   );
 }
 
+// --- Lecturer Tab Navigator ---
 function LecturerTabs() {
   return (
     <Tab.Navigator
@@ -121,7 +143,7 @@ function LecturerTabs() {
           if (route.name === 'Dashboard') iconName = focused ? 'home' : 'home-outline';
           else if (route.name === 'Classes') iconName = focused ? 'school' : 'school-outline';
           else if (route.name === 'Attendance') iconName = focused ? 'calendar' : 'calendar-outline';
-          else if (route.name === 'Reports') iconName = focused ? 'document-text' : 'document-text-outline';
+          else if (route.name === 'ReportsTab') iconName = focused ? 'document-text' : 'document-text-outline';
           else if (route.name === 'Ratings') iconName = focused ? 'star' : 'star-outline';
           else if (route.name === 'Profile') iconName = focused ? 'person' : 'person-outline';
           return <Ionicons name={iconName} size={size} color={color} />;
@@ -136,14 +158,18 @@ function LecturerTabs() {
       <Tab.Screen name="Dashboard" component={LecturerDashboard} />
       <Tab.Screen name="Classes" component={LecturerClasses} />
       <Tab.Screen name="Attendance" component={LecturerAttendance} />
-      <Tab.Screen name="Reports" component={LecturerReports} />
+      <Tab.Screen 
+        name="ReportsTab" 
+        component={LecturerReports}
+        options={{ title: 'Reports' }}
+      />
       <Tab.Screen name="Ratings" component={LecturerRatings} />
       <Tab.Screen name="Profile" component={LecturerProfile} />
     </Tab.Navigator>
   );
 }
 
-// PRL Stack Navigator
+// --- PRL Stack Navigator ---
 function PRLStack() {
   console.log('🔵 [PRLStack] Rendering PRL Stack Navigator');
   return (
@@ -154,7 +180,7 @@ function PRLStack() {
         component={PrlReports}
         options={{ 
           headerShown: true,
-          title: 'PrlReports',
+          title: 'PRL Reports',
           headerStyle: { backgroundColor: COLORS.headerBackground },
           headerTitleStyle: { color: COLORS.headerText },
           headerTintColor: COLORS.primary,
@@ -164,6 +190,7 @@ function PRLStack() {
   );
 }
 
+// --- PRL Tab Navigator ---
 function PRLTabs() {
   return (
     <Tab.Navigator
@@ -195,6 +222,39 @@ function PRLTabs() {
   );
 }
 
+// --- PL Stack Navigator ---
+function PLStack() {
+  console.log('🔵 [PLStack] Rendering PL Stack Navigator');
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="PLTabs" component={PLTabs} />
+      <Stack.Screen 
+        name="PLReports" 
+        component={PLReports}
+        options={{ 
+          headerShown: true,
+          title: 'Program Reports',
+          headerStyle: { backgroundColor: COLORS.headerBackground },
+          headerTitleStyle: { color: COLORS.headerText },
+          headerTintColor: COLORS.primary,
+        }}
+      />
+      <Stack.Screen 
+        name="PLMonitoring" 
+        component={PLMonitoring}
+        options={{ 
+          headerShown: true,
+          title: 'Program Monitoring',
+          headerStyle: { backgroundColor: COLORS.headerBackground },
+          headerTitleStyle: { color: COLORS.headerText },
+          headerTintColor: COLORS.primary,
+        }}
+      />
+    </Stack.Navigator>
+  );
+}
+
+// --- PL Tab Navigator ---
 function PLTabs() {
   return (
     <Tab.Navigator
@@ -205,8 +265,8 @@ function PLTabs() {
           else if (route.name === 'Courses') iconName = focused ? 'book' : 'book-outline';
           else if (route.name === 'Modules') iconName = focused ? 'layers' : 'layers-outline';
           else if (route.name === 'Lecturers') iconName = focused ? 'people' : 'people-outline';
-          else if (route.name === 'Reports') iconName = focused ? 'document-text' : 'document-text-outline';
-          else if (route.name === 'Monitoring') iconName = focused ? 'analytics' : 'analytics-outline';
+          else if (route.name === 'ReportsTab') iconName = focused ? 'document-text' : 'document-text-outline';
+          else if (route.name === 'MonitoringTab') iconName = focused ? 'analytics' : 'analytics-outline';
           else if (route.name === 'Ratings') iconName = focused ? 'star' : 'star-outline';
           else if (route.name === 'Profile') iconName = focused ? 'person' : 'person-outline';
           return <Ionicons name={iconName} size={size} color={color} />;
@@ -222,8 +282,16 @@ function PLTabs() {
       <Tab.Screen name="Courses" component={PLCourses} />
       <Tab.Screen name="Modules" component={PLModules} />
       <Tab.Screen name="Lecturers" component={PLLecturers} />
-      <Tab.Screen name="Reports" component={PLReports} />
-      <Tab.Screen name="Monitoring" component={PLMonitoring} />
+      <Tab.Screen 
+        name="ReportsTab" 
+        component={PLReports}
+        options={{ title: 'Reports' }}
+      />
+      <Tab.Screen 
+        name="MonitoringTab" 
+        component={PLMonitoring}
+        options={{ title: 'Monitoring' }}
+      />
       <Tab.Screen name="Ratings" component={PLRatings} />
       <Tab.Screen name="Profile" component={PLProfile} />
     </Tab.Navigator>
@@ -231,7 +299,6 @@ function PLTabs() {
 }
 
 // --- Main App Navigator ---
-
 export default function AppNavigator() {
   const dispatch = useDispatch();
   
@@ -283,7 +350,7 @@ export default function AppNavigator() {
         ) : (
           <>
             {user?.role === 'student' && (
-              <Stack.Screen name="StudentDashboard" component={StudentTabs} />
+              <Stack.Screen name="StudentDashboard" component={StudentStack} />
             )}
             {user?.role === 'lecturer' && (
               <Stack.Screen name="LecturerDashboard" component={LecturerStack} />
@@ -292,7 +359,7 @@ export default function AppNavigator() {
               <Stack.Screen name="PRLDashboard" component={PRLStack} />
             )}
             {user?.role === 'pl' && (
-              <Stack.Screen name="PLDashboard" component={PLTabs} />
+              <Stack.Screen name="PLDashboard" component={PLStack} />
             )}
             {!user?.role && (
               <Stack.Screen name="Login" component={LoginScreen} />

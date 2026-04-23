@@ -1,4 +1,4 @@
-// app/lecturer/Dashboard.js - Full updated version
+// app/lecturer/Dashboard.js - Updated version
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
@@ -7,16 +7,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatsCard, LoadingSpinner, Card } from '../../src/components/UI';
 import { COLORS, spacing, typography } from '../../config/theme';
 import { fetchDashboardStats } from '../../src/store/monitoringSlice';
-import { fetchCourses } from '../../src/store/courseSlice';
+import { fetchCourses, fetchCoursesByLecturer } from '../../src/store/courseSlice';
 import { fetchReports } from '../../src/store/monitoringSlice';
-import { fetchRatings } from '../../src/store/monitoringSlice';
 
 export default function LecturerDashboard({ navigation }) {
   const dispatch = useDispatch();
   const { stats, isLoading } = useSelector(state => state.monitoring);
-  const { courses = [] } = useSelector(state => state.courses);
+  const { courses = [], totalCourses } = useSelector(state => state.courses);
   const { reports = [] } = useSelector(state => state.monitoring);
-  const { ratings = [] } = useSelector(state => state.monitoring);
   const { user } = useSelector(state => state.auth);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -33,9 +31,8 @@ export default function LecturerDashboard({ navigation }) {
     try {
       await Promise.all([
         dispatch(fetchDashboardStats()),
-        dispatch(fetchCourses({ lecturerId: lecturerId })),
+        dispatch(fetchCoursesByLecturer(lecturerId)), // Fetch only lecturer's courses
         dispatch(fetchReports({ lecturerId: lecturerId })),
-        dispatch(fetchRatings({ lecturerId: lecturerId })),
       ]);
     } catch (error) {
       console.error('Error loading dashboard:', error);
@@ -61,19 +58,11 @@ export default function LecturerDashboard({ navigation }) {
     r.lecturerEmployeeId === lecturerId
   ) || [];
 
-  const myRatings = ratings?.filter(r => 
-    r.lecturerId === lecturerId || 
-    r.lecturerEmployeeId === lecturerId
-  ) || [];
+  // Calculate total number of courses assigned
+  const totalAssignedCourses = totalCourses || myCourses.length;
 
-  // ✅ FIXED: Calculate total students from REPORTS
-  // Method 1: Sum of totalRegisteredStudents from all reports
-  const totalStudentsFromReports = myReports.reduce((sum, report) => {
-    const students = parseInt(report.totalRegisteredStudents) || 0;
-    return sum + students;
-  }, 0);
-
-  // Method 2: Get unique total per course (more accurate - avoids double counting)
+  // ✅ Calculate total students from REPORTS
+  // Get unique total per course (more accurate - avoids double counting)
   const getUniqueCourseStudents = () => {
     const courseMap = new Map();
     
@@ -94,15 +83,12 @@ export default function LecturerDashboard({ navigation }) {
     return Array.from(courseMap.values()).reduce((sum, val) => sum + val, 0);
   };
 
-  // Use unique course totals (prevents double-counting same class)
-  const totalStudents = getUniqueCourseStudents() || totalStudentsFromReports;
+  const totalStudents = getUniqueCourseStudents();
 
   // Calculate report statistics
   const reportStats = {
     total: myReports.length,
     pending: myReports.filter(r => r.status?.toLowerCase() === 'pending').length,
-    approved: myReports.filter(r => r.status?.toLowerCase() === 'approved').length,
-    rejected: myReports.filter(r => r.status?.toLowerCase() === 'rejected').length,
     thisWeek: myReports.filter(r => {
       const created = new Date(r.createdAt);
       const now = new Date();
@@ -110,16 +96,6 @@ export default function LecturerDashboard({ navigation }) {
       return created >= weekAgo;
     }).length,
   };
-
-  // Calculate average class size
-  const averageClassSize = reportStats.total > 0 
-    ? Math.round(totalStudentsFromReports / reportStats.total)
-    : 0;
-
-  // Calculate average rating
-  const myAverageRating = myRatings.length > 0 
-    ? (myRatings.reduce((sum, r) => sum + (Number(r.overall) || 0), 0) / myRatings.length).toFixed(1)
-    : '0.0';
 
   // Get pending reports
   const pendingReports = myReports.filter(r => r.status?.toLowerCase() === 'pending');
@@ -149,65 +125,35 @@ export default function LecturerDashboard({ navigation }) {
           <Text style={styles.department}>{user?.department || user?.faculty || 'Faculty'}</Text>
         </View>
 
-        {/* Stats Cards */}
+        {/* Stats Cards - Now showing Total Courses instead of Rating */}
         <View style={styles.statsRow}>
           <StatsCard
-            title="My Courses"
-            value={myCourses.length}
+            title="Total Courses"
+            value={totalAssignedCourses}
             icon="📚"
             color={COLORS.primary}
           />
           <StatsCard
-            title="My Rating"
-            value={myAverageRating}
-            icon="⭐"
-            suffix="/5"
-            color={parseFloat(myAverageRating) >= 4 ? COLORS.success : COLORS.warning}
+            title="Total Reports"
+            value={reportStats.total}
+            icon="📄"
+            color={COLORS.info}
           />
         </View>
 
         <View style={styles.statsRow}>
           <StatsCard
-            title="Total Reports"
-            value={reportStats.total}
-            icon="📄"
-            color={COLORS.primary}
-          />
-          <StatsCard
             title="Total Students"
             value={totalStudents}
             icon="👨‍🎓"
-            color={COLORS.info}
-            subtitle={`Avg: ${averageClassSize}/class`}
+            color={COLORS.success}
           />
-        </View>
-
-        {/* Report Status Summary */}
-        <View style={styles.reportStatsRow}>
-          <View style={[styles.reportStatCard, { backgroundColor: COLORS.warning + '15' }]}>
-            <Text style={[styles.reportStatNumber, { color: COLORS.warning }]}>
-              {reportStats.pending}
-            </Text>
-            <Text style={styles.reportStatLabel}>Pending</Text>
-          </View>
-          <View style={[styles.reportStatCard, { backgroundColor: COLORS.success + '15' }]}>
-            <Text style={[styles.reportStatNumber, { color: COLORS.success }]}>
-              {reportStats.approved}
-            </Text>
-            <Text style={styles.reportStatLabel}>Approved</Text>
-          </View>
-          <View style={[styles.reportStatCard, { backgroundColor: COLORS.error + '15' }]}>
-            <Text style={[styles.reportStatNumber, { color: COLORS.error }]}>
-              {reportStats.rejected}
-            </Text>
-            <Text style={styles.reportStatLabel}>Rejected</Text>
-          </View>
-          <View style={[styles.reportStatCard, { backgroundColor: COLORS.primary + '15' }]}>
-            <Text style={[styles.reportStatNumber, { color: COLORS.primary }]}>
-              {reportStats.thisWeek}
-            </Text>
-            <Text style={styles.reportStatLabel}>This Week</Text>
-          </View>
+          <StatsCard
+            title="Reports This Week"
+            value={reportStats.thisWeek}
+            icon="📊"
+            color={COLORS.warning}
+          />
         </View>
 
         {/* Quick Actions */}
@@ -246,12 +192,12 @@ export default function LecturerDashboard({ navigation }) {
             
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => navigation.navigate('Ratings')}
+              onPress={() => navigation.navigate('Profile')}
             >
-              <View style={[styles.actionIcon, { backgroundColor: COLORS.warning + '20' }]}>
-                <Ionicons name="star-outline" size={28} color={COLORS.warning} />
+              <View style={[styles.actionIcon, { backgroundColor: COLORS.secondary + '20' }]}>
+                <Ionicons name="person-outline" size={28} color={COLORS.secondary} />
               </View>
-              <Text style={styles.actionText}>Ratings</Text>
+              <Text style={styles.actionText}>Profile</Text>
             </TouchableOpacity>
           </View>
         </Card>
@@ -339,16 +285,17 @@ export default function LecturerDashboard({ navigation }) {
         {/* My Courses */}
         <Card style={[styles.sectionCard, styles.lastCard]}>
           <View style={styles.cardHeader}>
-            <Text style={styles.sectionTitle}>My Courses</Text>
+            <Text style={styles.sectionTitle}>My Courses ({totalAssignedCourses})</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Classes')}>
               <Text style={styles.viewAll}>View All</Text>
             </TouchableOpacity>
           </View>
           {myCourses.length > 0 ? (
-            myCourses.slice(0, 3).map((course) => (
+            myCourses.slice(0, 5).map((course) => (
               <TouchableOpacity
                 key={course.id}
                 style={styles.classItem}
+                onPress={() => navigation.navigate('ClassDetails', { courseId: course.id })}
               >
                 <View style={styles.classInfo}>
                   <Text style={styles.className}>{course.name}</Text>
@@ -363,7 +310,7 @@ export default function LecturerDashboard({ navigation }) {
               </TouchableOpacity>
             ))
           ) : (
-            <Text style={styles.emptyText}>No courses assigned</Text>
+            <Text style={styles.emptyText}>No courses assigned yet</Text>
           )}
         </Card>
       </ScrollView>
@@ -414,26 +361,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     marginBottom: spacing.sm,
     gap: spacing.sm,
-  },
-  reportStatsRow: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.md,
-    gap: spacing.sm,
-  },
-  reportStatCard: {
-    flex: 1,
-    borderRadius: 12,
-    padding: spacing.sm,
-    alignItems: 'center',
-  },
-  reportStatNumber: {
-    ...typography.h3,
-    fontWeight: '700',
-  },
-  reportStatLabel: {
-    ...typography.caption,
-    color: COLORS.textSecondary,
   },
   sectionCard: {
     marginHorizontal: spacing.md,

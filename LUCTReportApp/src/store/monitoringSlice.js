@@ -17,6 +17,65 @@ import {
 import { db } from '../../config/firebase';
 
 // ============================================
+// HELPER: Serialize Firestore Timestamps
+// ============================================
+
+const serializeFirestoreData = (data) => {
+  if (!data) return data;
+  
+  const serialized = { ...data };
+  
+  // List of known timestamp fields to check
+  const timestampFields = [
+    'createdAt',
+    'updatedAt',
+    'prlReviewedAt',
+    'reviewedAt',
+    'scheduledLectureTime',
+    'dateOfLecture',
+    'weekOfReporting',
+    'timestamp',
+    'lastEngagement',
+    'submittedAt',
+    'approvedAt',
+    'rejectedAt',
+  ];
+  
+  // Convert known timestamp fields
+  timestampFields.forEach(field => {
+    if (serialized[field] && typeof serialized[field] === 'object') {
+      // Check if it's a Firestore Timestamp (has toDate method)
+      if (serialized[field].toDate && typeof serialized[field].toDate === 'function') {
+        serialized[field] = serialized[field].toDate().toISOString();
+      }
+      // Check for Firestore Timestamp structure (seconds + nanoseconds)
+      else if (serialized[field].seconds !== undefined && serialized[field].nanoseconds !== undefined) {
+        serialized[field] = new Date(serialized[field].seconds * 1000).toISOString();
+      }
+      // Handle Firestore serverTimestamp placeholder (empty object)
+      else if (Object.keys(serialized[field]).length === 0) {
+        serialized[field] = new Date().toISOString();
+      }
+    }
+  });
+  
+  // Recursively serialize any nested objects that might contain timestamps
+  Object.keys(serialized).forEach(key => {
+    const value = serialized[key];
+    if (value && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
+      // Check if it might be a timestamp by looking for seconds/nanoseconds
+      if (value.seconds !== undefined && value.nanoseconds !== undefined) {
+        serialized[key] = new Date(value.seconds * 1000).toISOString();
+      } else if (typeof value.toDate === 'function') {
+        serialized[key] = value.toDate().toISOString();
+      }
+    }
+  });
+  
+  return serialized;
+};
+
+// ============================================
 // REPORT THUNKS (Firebase Firestore)
 // ============================================
 
@@ -59,12 +118,15 @@ export const fetchReports = createAsyncThunk(
       let reports = [];
       snapshot.forEach(doc => {
         const data = doc.data();
+        // Serialize all Firestore timestamps
+        const serializedData = serializeFirestoreData(data);
+        
         reports.push({ 
           id: doc.id, 
-          ...data,
-          // Ensure dates are properly formatted
-          createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
-          updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt,
+          ...serializedData,
+          // Ensure critical date fields are properly set
+          createdAt: serializedData.createdAt || new Date().toISOString(),
+          updatedAt: serializedData.updatedAt || new Date().toISOString(),
         });
       });
       
@@ -158,7 +220,7 @@ export const submitReport = createAsyncThunk(
       // Return with client-side timestamp for immediate display
       const savedReport = {
         id: docRef.id,
-        ...firestoreData,
+        ...serializeFirestoreData(firestoreData),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -198,17 +260,22 @@ export const updateReportStatus = createAsyncThunk(
         updateData.reviewedBy = reviewedBy || user?.employeeId || user?.id || user?.uid;
         updateData.reviewedByName = user?.displayName || user?.name || 'Admin';
         updateData.reviewedAt = serverTimestamp();
+        updateData.prlReviewedAt = serverTimestamp();
       }
       
       await updateDoc(reportRef, updateData);
       
       // Get updated report
       const updatedDoc = await getDoc(reportRef);
+      const serializedData = serializeFirestoreData(updatedDoc.data());
+      
       const updatedReport = { 
         id: updatedDoc.id, 
-        ...updatedDoc.data(),
-        createdAt: updatedDoc.data().createdAt?.toDate?.()?.toISOString() || updatedDoc.data().createdAt,
+        ...serializedData,
+        createdAt: serializedData.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        reviewedAt: serializedData.reviewedAt || new Date().toISOString(),
+        prlReviewedAt: serializedData.prlReviewedAt || new Date().toISOString(),
       };
       
       return {
@@ -236,12 +303,14 @@ export const fetchReportById = createAsyncThunk(
       }
       
       const data = reportDoc.data();
+      const serializedData = serializeFirestoreData(data);
+      
       return {
         report: { 
           id: reportDoc.id, 
-          ...data,
-          createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
-          updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt,
+          ...serializedData,
+          createdAt: serializedData.createdAt || new Date().toISOString(),
+          updatedAt: serializedData.updatedAt || new Date().toISOString(),
         }
       };
     } catch (error) {
@@ -331,7 +400,8 @@ export const fetchMonitoringData = createAsyncThunk(
       const snapshot = await getDocs(q);
       const records = [];
       snapshot.forEach(doc => {
-        records.push({ id: doc.id, ...doc.data() });
+        const serializedData = serializeFirestoreData(doc.data());
+        records.push({ id: doc.id, ...serializedData });
       });
       
       return { records, observations: [] };
@@ -351,7 +421,11 @@ export const createObservation = createAsyncThunk(
         createdAt: serverTimestamp()
       });
       
-      return { id: docRef.id, ...data, createdAt: new Date().toISOString() };
+      return { 
+        id: docRef.id, 
+        ...serializeFirestoreData(data), 
+        createdAt: new Date().toISOString() 
+      };
     } catch (error) {
       console.error('❌ Error creating observation:', error);
       return rejectWithValue(error.message);
@@ -398,7 +472,7 @@ export const fetchCourseMonitoring = createAsyncThunk(
       const snapshot = await getDocs(q);
       let data = null;
       snapshot.forEach(doc => {
-        data = { id: doc.id, ...doc.data() };
+        data = { id: doc.id, ...serializeFirestoreData(doc.data()) };
       });
       
       return data || {
@@ -428,7 +502,7 @@ export const fetchCourseProgress = createAsyncThunk(
       const snapshot = await getDocs(q);
       let data = null;
       snapshot.forEach(doc => {
-        data = { id: doc.id, ...doc.data() };
+        data = { id: doc.id, ...serializeFirestoreData(doc.data()) };
       });
       
       return data || { overallProgress: 60, attendanceRate: 75 };
@@ -455,7 +529,7 @@ export const fetchCourseActivities = createAsyncThunk(
       const snapshot = await getDocs(q);
       const activities = [];
       snapshot.forEach(doc => {
-        activities.push({ id: doc.id, ...doc.data() });
+        activities.push({ id: doc.id, ...serializeFirestoreData(doc.data()) });
       });
       
       return { activities };
@@ -480,7 +554,7 @@ export const fetchCourseAttendanceAnalytics = createAsyncThunk(
       const snapshot = await getDocs(q);
       let data = null;
       snapshot.forEach(doc => {
-        data = { id: doc.id, ...doc.data() };
+        data = { id: doc.id, ...serializeFirestoreData(doc.data()) };
       });
       
       return data || { attendance: 75, present: 15, total: 20 };
@@ -518,7 +592,7 @@ export const fetchRatings = createAsyncThunk(
       const snapshot = await getDocs(q);
       const ratings = [];
       snapshot.forEach(doc => {
-        ratings.push({ id: doc.id, ...doc.data() });
+        ratings.push({ id: doc.id, ...serializeFirestoreData(doc.data()) });
       });
       
       return { ratings };
@@ -539,7 +613,11 @@ export const submitRating = createAsyncThunk(
       });
       
       return {
-        rating: { id: docRef.id, ...ratingData, createdAt: new Date().toISOString() }
+        rating: { 
+          id: docRef.id, 
+          ...serializeFirestoreData(ratingData), 
+          createdAt: new Date().toISOString() 
+        }
       };
     } catch (error) {
       console.error('❌ Error submitting rating:', error);
