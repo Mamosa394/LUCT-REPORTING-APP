@@ -130,13 +130,13 @@ export default function LecturerDashboard({ navigation }) {
           <StatsCard
             title="Total Courses"
             value={totalAssignedCourses}
-            icon="📚"
+            icon={<Ionicons name="reader-outline" size={18} color={COLORS.primary} />}
             color={COLORS.primary}
           />
           <StatsCard
             title="Total Reports"
             value={reportStats.total}
-            icon="📄"
+            icon={<Ionicons name="documents-outline" size={18} color={COLORS.primary} />}
             color={COLORS.info}
           />
         </View>
@@ -145,63 +145,11 @@ export default function LecturerDashboard({ navigation }) {
           <StatsCard
             title="Total Students"
             value={totalStudents}
-            icon="👨‍🎓"
+            icon={<Ionicons name="person-outline" size={18} color={COLORS.primary} />}
             color={COLORS.success}
           />
-          <StatsCard
-            title="Reports This Week"
-            value={reportStats.thisWeek}
-            icon="📊"
-            color={COLORS.warning}
-          />
+          
         </View>
-
-        {/* Quick Actions */}
-        <Card style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.quickActionsGrid}>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => navigation.navigate('LecturerReportingForm')}
-            >
-              <View style={[styles.actionIcon, { backgroundColor: COLORS.success + '20' }]}>
-                <Ionicons name="add-circle-outline" size={28} color={COLORS.success} />
-              </View>
-              <Text style={styles.actionText}>New Report</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => navigation.navigate('LecturerReports')}
-            >
-              <View style={[styles.actionIcon, { backgroundColor: COLORS.primary + '20' }]}>
-                <Ionicons name="document-text-outline" size={28} color={COLORS.primary} />
-              </View>
-              <Text style={styles.actionText}>My Reports</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => navigation.navigate('Classes')}
-            >
-              <View style={[styles.actionIcon, { backgroundColor: COLORS.info + '20' }]}>
-                <Ionicons name="people-outline" size={28} color={COLORS.info} />
-              </View>
-              <Text style={styles.actionText}>Classes</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => navigation.navigate('Profile')}
-            >
-              <View style={[styles.actionIcon, { backgroundColor: COLORS.secondary + '20' }]}>
-                <Ionicons name="person-outline" size={28} color={COLORS.secondary} />
-              </View>
-              <Text style={styles.actionText}>Profile</Text>
-            </TouchableOpacity>
-          </View>
-        </Card>
-
         {/* Recent Reports */}
         <Card style={styles.sectionCard}>
           <View style={styles.cardHeader}>
@@ -285,33 +233,12 @@ export default function LecturerDashboard({ navigation }) {
         {/* My Courses */}
         <Card style={[styles.sectionCard, styles.lastCard]}>
           <View style={styles.cardHeader}>
-            <Text style={styles.sectionTitle}>My Courses ({totalAssignedCourses})</Text>
+            <Text style={styles.sectionTitle}>My Courses {<Ionicons name="chevron-forward" size={18} color={COLORS.primary} />} {totalAssignedCourses}</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Classes')}>
               <Text style={styles.viewAll}>View All</Text>
             </TouchableOpacity>
           </View>
-          {myCourses.length > 0 ? (
-            myCourses.slice(0, 5).map((course) => (
-              <TouchableOpacity
-                key={course.id}
-                style={styles.classItem}
-                onPress={() => navigation.navigate('ClassDetails', { courseId: course.id })}
-              >
-                <View style={styles.classInfo}>
-                  <Text style={styles.className}>{course.name}</Text>
-                  <Text style={styles.classCode}>{course.code}</Text>
-                  <View style={styles.classMeta}>
-                    <Text style={styles.classStudents}>
-                      Reports: {myReports.filter(r => r.courseId === course.id || r.courseCode === course.code).length}
-                    </Text>
-                  </View>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-              </TouchableOpacity>
-            ))
-          ) : (
-            <Text style={styles.emptyText}>No courses assigned yet</Text>
-          )}
+          
         </Card>
       </ScrollView>
     </SafeAreaView>

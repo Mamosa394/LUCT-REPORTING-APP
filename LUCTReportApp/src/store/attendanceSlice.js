@@ -1,3 +1,4 @@
+// src/store/attendanceSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../src/services/api';
 
@@ -58,17 +59,90 @@ export const fetchStudentAttendanceSummary = createAsyncThunk(
   'attendance/studentSummary',
   async ({ studentId, moduleId, month, year }, { rejectWithValue }) => {
     try {
-      // If the API has a specific endpoint for student summary, use this:
-      // const response = await api.get('/attendance/student-summary', {
-      //   params: { studentId, moduleId, month, year },
-      // });
-      
-      // Otherwise, reuse fetchAttendanceStats logic (without month/year if not supported)
       const response = await api.get('/attendance/stats', {
         params: { moduleId, studentId },
       });
       return response.data.stats;
     } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+// ✅ UPDATED: Fetch students from attendance records for a course
+export const fetchStudentsByCourse = createAsyncThunk(
+  'attendance/fetchStudentsByCourse',
+  async (courseId, { rejectWithValue }) => {
+    try {
+      console.log('📚 Fetching students from attendance for course:', courseId);
+      
+      // Fetch all attendance records for this course
+      const attendanceResponse = await api.get('/attendance', {
+        params: {
+          where: [{ field: 'courseId', operator: '==', value: courseId }]
+        }
+      });
+      
+      const attendanceRecords = attendanceResponse.data?.records || [];
+      console.log(`📚 Found ${attendanceRecords.length} attendance records`);
+      
+      // Extract unique students from attendance records
+      const studentMap = new Map();
+      
+      attendanceRecords.forEach(record => {
+        const studentId = record.studentId;
+        if (studentId && !studentMap.has(studentId)) {
+          studentMap.set(studentId, {
+            id: studentId,
+            name: record.studentName || 'Unknown Student',
+            studentId: record.studentId,
+            email: record.studentEmail || '',
+          });
+        }
+      });
+      
+      const students = Array.from(studentMap.values());
+      console.log(`✅ Found ${students.length} unique students for course ${courseId}`);
+      
+      if (students.length > 0) {
+        console.log('📚 Students:', students.map(s => s.name));
+      }
+      
+      return { students, courseId };
+    } catch (error) {
+      console.error('❌ Error fetching students from attendance:', error);
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+// ✅ NEW: Fetch attendance records by course
+export const fetchAttendanceByCourse = createAsyncThunk(
+  'attendance/fetchByCourse',
+  async ({ courseId, date }, { rejectWithValue }) => {
+    try {
+      console.log('📚 Fetching attendance for course:', courseId, date);
+      
+      const params = {
+        where: [{ field: 'courseId', operator: '==', value: courseId }]
+      };
+      
+      if (date) {
+        params.where.push({ field: 'dateString', operator: '==', value: date });
+      }
+      
+      params.orderBy = 'date';
+      params.order = 'desc';
+      
+      const response = await api.get('/attendance', { params });
+      
+      return { 
+        records: response.data?.records || [], 
+        courseId,
+        date 
+      };
+    } catch (error) {
+      console.error('❌ Error fetching attendance by course:', error);
       return rejectWithValue(error.message);
     }
   }
@@ -80,12 +154,32 @@ const attendanceSlice = createSlice({
     records: [],
     stats: null,
     calendarData: {},
+    courseStudents: {}, // Map courseId -> students array
+    attendanceByCourse: {}, // Map courseId -> attendance records
     loading: false,
     marking: false,
     error: null,
   },
   reducers: {
-    clearError: (state) => { state.error = null; },
+    clearError: (state) => { 
+      state.error = null; 
+    },
+    clearCourseStudents: (state, action) => {
+      const courseId = action.payload;
+      if (courseId) {
+        delete state.courseStudents[courseId];
+      } else {
+        state.courseStudents = {};
+      }
+    },
+    clearAttendanceByCourse: (state, action) => {
+      const courseId = action.payload;
+      if (courseId) {
+        delete state.attendanceByCourse[courseId];
+      } else {
+        state.attendanceByCourse = {};
+      }
+    },
     buildCalendarData: (state) => {
       const data = {};
       state.records.forEach((record) => {
@@ -110,50 +204,109 @@ const attendanceSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchAttendance.pending, (state) => { state.loading = true; state.error = null; })
+      // Fetch Attendance
+      .addCase(fetchAttendance.pending, (state) => { 
+        state.loading = true; 
+        state.error = null; 
+      })
       .addCase(fetchAttendance.fulfilled, (state, action) => {
         state.loading = false;
         state.records = action.payload.records;
       })
       .addCase(fetchAttendance.rejected, (state, action) => {
-        state.loading = false; state.error = action.payload;
+        state.loading = false; 
+        state.error = action.payload;
       })
 
-      .addCase(markAttendance.pending, (state) => { state.marking = true; })
+      // Mark Attendance
+      .addCase(markAttendance.pending, (state) => { 
+        state.marking = true; 
+      })
       .addCase(markAttendance.fulfilled, (state, action) => {
         state.marking = false;
         if (action.payload.records) {
           state.records = [...state.records, ...action.payload.records];
         }
+        if (action.payload.record) {
+          state.records.push(action.payload.record);
+        }
       })
       .addCase(markAttendance.rejected, (state, action) => {
-        state.marking = false; state.error = action.payload;
+        state.marking = false; 
+        state.error = action.payload;
       })
 
+      // Update Attendance Record
       .addCase(updateAttendanceRecord.fulfilled, (state, action) => {
         const idx = state.records.findIndex(r => r.id === action.payload.id);
         if (idx !== -1) state.records[idx] = action.payload;
       })
 
+      // Fetch Attendance Stats
       .addCase(fetchAttendanceStats.fulfilled, (state, action) => {
         state.stats = action.payload;
       })
       
-      // NEW: handle fetchStudentAttendanceSummary
-      .addCase(fetchStudentAttendanceSummary.pending, (state) => { state.loading = true; state.error = null; })
+      // Fetch Student Attendance Summary
+      .addCase(fetchStudentAttendanceSummary.pending, (state) => { 
+        state.loading = true; 
+        state.error = null; 
+      })
       .addCase(fetchStudentAttendanceSummary.fulfilled, (state, action) => {
         state.loading = false;
         state.stats = action.payload;
       })
       .addCase(fetchStudentAttendanceSummary.rejected, (state, action) => {
-        state.loading = false; state.error = action.payload;
+        state.loading = false; 
+        state.error = action.payload;
+      })
+
+      // ✅ NEW: Fetch Students By Course
+      .addCase(fetchStudentsByCourse.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchStudentsByCourse.fulfilled, (state, action) => {
+        state.loading = false;
+        const { students, courseId } = action.payload;
+        state.courseStudents[courseId] = students;
+      })
+      .addCase(fetchStudentsByCourse.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // ✅ NEW: Fetch Attendance By Course
+      .addCase(fetchAttendanceByCourse.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(fetchAttendanceByCourse.fulfilled, (state, action) => {
+        state.loading = false;
+        const { records, courseId } = action.payload;
+        state.attendanceByCourse[courseId] = records;
+      })
+      .addCase(fetchAttendanceByCourse.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       });
   },
 });
 
-export const { clearError, buildCalendarData } = attendanceSlice.actions;
+// Export actions
+export const { 
+  clearError, 
+  clearCourseStudents, 
+  clearAttendanceByCourse, 
+  buildCalendarData 
+} = attendanceSlice.actions;
+
+// Selectors
 export const selectAttendanceRecords = (state) => state.attendance.records;
 export const selectAttendanceStats = (state) => state.attendance.stats;
 export const selectCalendarData = (state) => state.attendance.calendarData;
 export const selectAttendanceLoading = (state) => state.attendance.loading;
+export const selectAttendanceMarking = (state) => state.attendance.marking;
+export const selectCourseStudents = (state, courseId) => state.attendance.courseStudents[courseId] || [];
+export const selectAttendanceByCourse = (state, courseId) => state.attendance.attendanceByCourse[courseId] || [];
+
 export default attendanceSlice.reducer;

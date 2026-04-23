@@ -54,12 +54,7 @@ export default function LecturerProfile({ navigation }) {
                 {user?.name?.charAt(0).toUpperCase() || 'L'}
               </Text>
             </View>
-            <TouchableOpacity
-              style={styles.editIcon}
-              onPress={() => setIsEditing(!isEditing)}
-            >
-              <Ionicons name="camera-outline" size={20} color={COLORS.text} />
-            </TouchableOpacity>
+           
           </View>
           <Text style={styles.userName}>{user?.name}</Text>
           <Text style={styles.userRole}>Lecturer</Text>
@@ -86,14 +81,6 @@ export default function LecturerProfile({ navigation }) {
           />
           
           <Input
-            label="Phone Number"
-            value={formData.phone}
-            onChangeText={(text) => setFormData({ ...formData, phone: text })}
-            editable={isEditing}
-            keyboardType="phone-pad"
-          />
-          
-          <Input
             label="Employee ID"
             value={formData.employeeId}
             editable={false}
@@ -109,24 +96,7 @@ export default function LecturerProfile({ navigation }) {
             label="Position"
             value={formData.position}
             editable={false}
-          />
-          
-          <Input
-            label="Office Location"
-            value={formData.office}
-            onChangeText={(text) => setFormData({ ...formData, office: text })}
-            editable={isEditing}
-            placeholder="e.g., Room 301, CS Building"
-          />
-          
-          <Input
-            label="Specialization"
-            value={formData.specialization}
-            onChangeText={(text) => setFormData({ ...formData, specialization: text })}
-            editable={isEditing}
-            placeholder="e.g., Mobile Development, AI"
-          />
-          
+          />          
           {isEditing && (
             <View style={styles.buttonRow}>
               <Button
@@ -142,66 +112,8 @@ export default function LecturerProfile({ navigation }) {
               />
             </View>
           )}
-        </Card>
-
-        {/* Teaching & Courses */}
-        <Card style={styles.actionsCard}>
-          <Text style={styles.sectionTitle}>Teaching</Text>
-          
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Classes')}>
-            <View style={styles.actionLeft}>
-              <Ionicons name="school-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.actionText}>My Classes</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Attendance')}>
-            <View style={styles.actionLeft}>
-              <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.actionText}>Mark Attendance</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Reports')}>
-            <View style={styles.actionLeft}>
-              <Ionicons name="document-text-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.actionText}>My Reports</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Ratings')}>
-            <View style={styles.actionLeft}>
-              <Ionicons name="star-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.actionText}>View Ratings</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-          </TouchableOpacity>
-        </Card>
-
-        {/* Account Actions */}
-        <Card style={styles.actionsCard}>
-          <Text style={styles.sectionTitle}>Account Settings</Text>
-          
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('ChangePassword')}>
-            <View style={styles.actionLeft}>
-              <Ionicons name="lock-closed-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.actionText}>Change Password</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('NotificationPreferences')}>
-            <View style={styles.actionLeft}>
-              <Ionicons name="notifications-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.actionText}>Notification Preferences</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-          </TouchableOpacity>
-        </Card>
-
+        </Card>       
+        
         {/* Logout Button */}
         <Button
           title="Logout"

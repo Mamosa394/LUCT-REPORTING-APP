@@ -1,3 +1,4 @@
+// src/store/courseSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../src/services/api';
 
@@ -32,7 +33,12 @@ export const fetchCourses = createAsyncThunk(
       params.order = 'desc';
       
       const response = await api.getCollection('courses', params);
-      return response.data;
+      
+      // ✅ Return consistent structure
+      return {
+        courses: response.data.courses || [],
+        total: response.data.total || response.data.courses?.length || 0
+      };
     } catch (error) {
       console.error('❌ Error fetching courses:', error);
       return rejectWithValue(error.message);
@@ -76,6 +82,8 @@ export const createCourse = createAsyncThunk(
         createdBy: courseData.createdBy || '',
         isActive: true,
         status: 'active',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
       
       const response = await api.postDocument('courses', newCourse);
@@ -110,6 +118,7 @@ export const updateCourse = createAsyncThunk(
         updatedBy: data.updatedBy || '',
         isActive: data.isActive !== undefined ? data.isActive : true,
         status: data.status || 'active',
+        updatedAt: new Date().toISOString(),
       };
       
       const response = await api.updateDocument('courses', id, updateData);
@@ -137,18 +146,35 @@ export const deleteCourse = createAsyncThunk(
   }
 );
 
-// Optional: Fetch courses by lecturer (convenience method)
+// Fetch courses by lecturer using employeeId
 export const fetchCoursesByLecturer = createAsyncThunk(
   'courses/fetchByLecturer',
-  async (lecturerId, { rejectWithValue }) => {
+  async (employeeId, { rejectWithValue }) => {
     try {
-      console.log('📚 Fetching courses for lecturer:', lecturerId);
+      console.log('📚 Fetching courses for lecturer employeeId:', employeeId);
+      
+      // Use employeeId instead of lecturerId
       const response = await api.getCollection('courses', {
-        where: [{ field: 'lecturerId', operator: '==', value: lecturerId }],
+        where: [{ field: 'employeeId', operator: '==', value: employeeId }],
         orderBy: 'createdAt',
         order: 'desc'
       });
-      return response.data;
+      
+      console.log('📚 API Response:', response.data);
+      
+      const courses = response.data?.courses || [];
+      const total = response.data?.total || courses.length;
+      
+      console.log(`✅ Found ${courses.length} courses for employeeId: ${employeeId}`);
+      
+      if (courses.length > 0) {
+        console.log('📚 Courses found:', courses.map(c => `${c.code}: ${c.name}`));
+      }
+      
+      return {
+        courses: courses,
+        total: total
+      };
     } catch (error) {
       console.error('❌ Error fetching lecturer courses:', error);
       return rejectWithValue(error.message);
@@ -156,7 +182,7 @@ export const fetchCoursesByLecturer = createAsyncThunk(
   }
 );
 
-// Optional: Fetch courses by stream
+// Fetch courses by stream
 export const fetchCoursesByStream = createAsyncThunk(
   'courses/fetchByStream',
   async (stream, { rejectWithValue }) => {
@@ -167,7 +193,12 @@ export const fetchCoursesByStream = createAsyncThunk(
         orderBy: 'createdAt',
         order: 'desc'
       });
-      return response.data;
+      
+      // ✅ Return consistent structure
+      return {
+        courses: response.data.courses || [],
+        total: response.data.total || response.data.courses?.length || 0
+      };
     } catch (error) {
       console.error('❌ Error fetching stream courses:', error);
       return rejectWithValue(error.message);
@@ -175,7 +206,7 @@ export const fetchCoursesByStream = createAsyncThunk(
   }
 );
 
-// Module-related actions (if you have modules collection)
+// Module-related actions
 export const fetchModules = createAsyncThunk(
   'courses/fetchModules',
   async (params = {}, { rejectWithValue }) => {
@@ -192,7 +223,12 @@ export const fetchModules = createAsyncThunk(
       }
       
       const response = await api.getCollection('modules', queryParams);
-      return response.data;
+      
+      // ✅ Return consistent structure
+      return {
+        modules: response.data.modules || [],
+        total: response.data.total || response.data.modules?.length || 0
+      };
     } catch (error) {
       console.error('❌ Error fetching modules:', error);
       return rejectWithValue(error.message);
@@ -216,6 +252,8 @@ export const createModule = createAsyncThunk(
         semester: moduleData.semester || '',
         credits: parseInt(moduleData.credits) || 0,
         isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
       
       const response = await api.postDocument('modules', newModule);
@@ -239,6 +277,7 @@ export const assignLecturer = createAsyncThunk(
         lecturerName,
         lecturerEmail,
         assignedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
       
       const response = await api.updateDocument('modules', moduleId, updateData);
@@ -286,7 +325,7 @@ const coursesSlice = createSlice({
         state.loading = false;
         state.courses = action.payload.courses || [];
         state.totalCourses = action.payload.total || 0;
-        console.log(`✅ Courses loaded: ${state.courses.length} courses`);
+        console.log(`✅ Courses loaded: ${state.courses.length} courses, Total: ${state.totalCourses}`);
       })
       .addCase(fetchCourses.rejected, (state, action) => {
         state.loading = false; 
@@ -365,8 +404,24 @@ const coursesSlice = createSlice({
         state.loading = false;
         state.courses = action.payload.courses || [];
         state.totalCourses = action.payload.total || 0;
+        console.log(`✅ Lecturer courses loaded: ${state.courses.length} courses, Total: ${state.totalCourses}`);
       })
       .addCase(fetchCoursesByLecturer.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // Fetch Courses by Stream
+      .addCase(fetchCoursesByStream.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(fetchCoursesByStream.fulfilled, (state, action) => {
+        state.loading = false;
+        state.courses = action.payload.courses || [];
+        state.totalCourses = action.payload.total || 0;
+        console.log(`✅ Stream courses loaded: ${state.courses.length} courses`);
+      })
+      .addCase(fetchCoursesByStream.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
@@ -379,6 +434,7 @@ const coursesSlice = createSlice({
         state.modulesLoading = false;
         state.modules = action.payload.modules || [];
         state.totalModules = action.payload.total || 0;
+        console.log(`✅ Modules loaded: ${state.modules.length} modules`);
       })
       .addCase(fetchModules.rejected, (state, action) => {
         state.modulesLoading = false; 
