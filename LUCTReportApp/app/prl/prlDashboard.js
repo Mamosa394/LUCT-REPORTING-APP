@@ -179,6 +179,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', 
     paddingHorizontal: spacing.md, 
     marginBottom: spacing.md, 
+    paddingRight: spacing.xs, 
     flexWrap: 'wrap', 
     justifyContent: 'space-between' 
   },

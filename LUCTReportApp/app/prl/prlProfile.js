@@ -1,29 +1,66 @@
 // app/prl/Profile.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer, LoadingSpinner, Input, Button, Card } from '../../src/components/UI';
 import { COLORS, spacing, typography } from '../../config/theme';
-import { logout } from '../../src/store/authSlice';
+import { logoutUser, updateUserProfile } from '../../src/store/authSlice';
 
 export default function PRLProfile({ navigation }) {
   const dispatch = useDispatch();
   const { user, isLoading } = useSelector(state => state.auth);
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  
+  // Get position from user data - check multiple possible fields
+  const userPosition = user?.position || user?.role || 'Principal Lecturer';
+  const userStream = user?.stream || 'Not assigned';
+  
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
-    phone: user?.phone || '',
     employeeId: user?.employeeId || '',
-    department: user?.department || '',
-    position: user?.position || 'Programme Leader',
+    department: user?.department || user?.faculty || '',
+    stream: userStream,
+    position: userPosition,
   });
 
+  // Update form when user data changes
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name || '',
+        email: user.email || '',
+        employeeId: user.employeeId || '',
+        department: user.department || user.faculty || '',
+        stream: user.stream || userStream,
+        position: user.position || user.role || 'Principal Lecturer',
+      });
+    }
+  }, [user]);
+
   const handleUpdate = async () => {
-    // Update profile logic
-    Alert.alert('Success', 'Profile updated successfully');
-    setIsEditing(false);
+    if (!formData.name.trim()) {
+      Alert.alert('Error', 'Name is required');
+      return;
+    }
+    
+    setIsSaving(true);
+    try {
+      await dispatch(updateUserProfile({
+        name: formData.name,
+        department: formData.department,
+      })).unwrap();
+      
+      Alert.alert('Success', 'Profile updated successfully');
+      setIsEditing(false);
+    } catch (error) {
+      Alert.alert('Error', error || 'Failed to update profile');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleLogout = () => {
@@ -32,7 +69,21 @@ export default function PRLProfile({ navigation }) {
       'Are you sure you want to logout?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Logout', style: 'destructive', onPress: () => dispatch(logout()) },
+        { 
+          text: 'Logout', 
+          style: 'destructive', 
+          onPress: async () => {
+            setIsLoggingOut(true);
+            try {
+              await dispatch(logoutUser()).unwrap();
+            } catch (error) {
+              console.error('Logout error:', error);
+              Alert.alert('Error', 'Failed to logout. Please try again.');
+            } finally {
+              setIsLoggingOut(false);
+            }
+          }
+        },
       ]
     );
   };
@@ -49,19 +100,24 @@ export default function PRLProfile({ navigation }) {
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>
-                {user?.name?.charAt(0).toUpperCase() || 'P'}
+                {user?.name?.charAt(0)?.toUpperCase() || 'P'}
               </Text>
             </View>
             <TouchableOpacity
               style={styles.editIcon}
               onPress={() => setIsEditing(!isEditing)}
             >
-              <Ionicons name="camera-outline" size={20} color={COLORS.text} />
             </TouchableOpacity>
           </View>
-          <Text style={styles.userName}>{user?.name}</Text>
-          <Text style={styles.userRole}>Programme Leader</Text>
-          <Text style={styles.userId}>{user?.employeeId}</Text>
+          <Text style={styles.userName}>{user?.name || 'Principal Lecturer'}</Text>
+          <Text style={styles.userRole}>{userPosition}</Text>
+          <Text style={styles.userId}>ID: {user?.employeeId || 'N/A'}</Text>
+          {userStream !== 'Not assigned' && (
+            <View style={styles.streamBadge}>
+              <Ionicons name="school-outline" size={14} color={COLORS.primary} />
+              <Text style={styles.streamText}>{userStream}</Text>
+            </View>
+          )}
         </View>
 
         {/* Profile Info */}
@@ -78,17 +134,8 @@ export default function PRLProfile({ navigation }) {
           <Input
             label="Email"
             value={formData.email}
-            onChangeText={(text) => setFormData({ ...formData, email: text })}
-            editable={isEditing}
+            editable={false}
             keyboardType="email-address"
-          />
-          
-          <Input
-            label="Phone Number"
-            value={formData.phone}
-            onChangeText={(text) => setFormData({ ...formData, phone: text })}
-            editable={isEditing}
-            keyboardType="phone-pad"
           />
           
           <Input
@@ -98,9 +145,10 @@ export default function PRLProfile({ navigation }) {
           />
           
           <Input
-            label="Department"
+            label="Department / Faculty"
             value={formData.department}
-            editable={false}
+            onChangeText={(text) => setFormData({ ...formData, department: text })}
+            editable={isEditing}
           />
           
           <Input
@@ -114,74 +162,39 @@ export default function PRLProfile({ navigation }) {
               <Button
                 title="Cancel"
                 variant="secondary"
-                onPress={() => setIsEditing(false)}
+                onPress={() => {
+                  setIsEditing(false);
+                  // Reset form to original user data
+                  setFormData({
+                    name: user?.name || '',
+                    email: user?.email || '',
+                    employeeId: user?.employeeId || '',
+                    department: user?.department || user?.faculty || '',
+                    stream: user?.stream || userStream,
+                    position: user?.position || user?.role || 'Principal Lecturer',
+                  });
+                }}
                 style={styles.button}
               />
               <Button
-                title="Save Changes"
+                title={isSaving ? "Saving..." : "Save Changes"}
                 onPress={handleUpdate}
                 style={styles.button}
+                loading={isSaving}
+                disabled={isSaving}
               />
             </View>
           )}
         </Card>
 
-        {/* Programme Management */}
-        <Card style={styles.actionsCard}>
-          <Text style={styles.sectionTitle}>Programme Management</Text>
-          
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Courses')}>
-            <View style={styles.actionLeft}>
-              <Ionicons name="book-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.actionText}>Manage Courses</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Lecturers')}>
-            <View style={styles.actionLeft}>
-              <Ionicons name="people-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.actionText}>Manage Lecturers</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Reports')}>
-            <View style={styles.actionLeft}>
-              <Ionicons name="document-text-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.actionText}>Review Reports</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-          </TouchableOpacity>
-        </Card>
-
-        {/* Account Actions */}
-        <Card style={styles.actionsCard}>
-          <Text style={styles.sectionTitle}>Account Settings</Text>
-          
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('ChangePassword')}>
-            <View style={styles.actionLeft}>
-              <Ionicons name="lock-closed-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.actionText}>Change Password</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Notifications')}>
-            <View style={styles.actionLeft}>
-              <Ionicons name="notifications-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.actionText}>Notification Settings</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-          </TouchableOpacity>
-        </Card>
-
         {/* Logout Button */}
         <Button
-          title="Logout"
+          title={isLoggingOut ? "Logging out..." : "Logout"}
           variant="danger"
           onPress={handleLogout}
           style={styles.logoutButton}
+          loading={isLoggingOut}
+          disabled={isLoggingOut}
         />
       </View>
     </ScreenContainer>
@@ -231,11 +244,27 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: COLORS.primary,
     marginTop: spacing.xs,
+    fontWeight: '600',
   },
   userId: {
     ...typography.caption,
     color: COLORS.textSecondary,
     marginTop: spacing.xs,
+  },
+  streamBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary + '15',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: 12,
+    marginTop: spacing.sm,
+    gap: spacing.xs,
+  },
+  streamText: {
+    ...typography.caption,
+    color: COLORS.primary,
+    fontWeight: '500',
   },
   infoCard: {
     marginBottom: spacing.md,
@@ -244,15 +273,16 @@ const styles = StyleSheet.create({
     ...typography.h4,
     color: COLORS.text,
     marginBottom: spacing.md,
+    fontWeight: '600',
   },
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: spacing.md,
+    gap: spacing.sm,
   },
   button: {
     flex: 1,
-    marginHorizontal: spacing.xs,
   },
   actionsCard: {
     marginBottom: spacing.md,

@@ -175,7 +175,7 @@ export default function PrlReports({ route, navigation }) {
           {/* Header with toggle */}
           <View style={styles.headerContainer}>
             <Text style={styles.title}>
-              {showReviewed ? 'All Reports' : 'Pending Reports'}
+              {showReviewed ? ' Reports' : ' Reports'}
             </Text>
             <View style={styles.toggleContainer}>
               <Text style={styles.toggleLabel}>Show Reviewed</Text>

@@ -108,22 +108,10 @@ export function CourseStats({ stats }) {
   
   return (
     <View style={styles.statsContainer}>
-      <View style={styles.statBox}>
-        <Text style={styles.statNumber}>{total}</Text>
-        <Text style={styles.statLabel}>Total Courses</Text>
-      </View>
-      <View style={styles.statBox}>
-        <Text style={[styles.statNumber, { color: COLORS.success }]}>{completed}</Text>
-        <Text style={styles.statLabel}>Completed</Text>
-      </View>
-      <View style={styles.statBox}>
-        <Text style={[styles.statNumber, { color: COLORS.warning }]}>{inProgress}</Text>
-        <Text style={styles.statLabel}>In Progress</Text>
-      </View>
-      <View style={styles.statBox}>
-        <Text style={[styles.statNumber, { color: COLORS.primary }]}>{upcoming}</Text>
-        <Text style={styles.statLabel}>Upcoming</Text>
-      </View>
+     
+      
+      
+      
     </View>
   );
 }

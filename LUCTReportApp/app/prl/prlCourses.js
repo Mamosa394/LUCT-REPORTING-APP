@@ -20,8 +20,11 @@ export default function PRLCourses({ navigation }) {
   
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
-  const [selectedCourse, setSelectedCourse] = useState(null); // For viewing course details
+  const [selectedCourse, setSelectedCourse] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  
   const [formData, setFormData] = useState({
     name: '',
     code: '',
@@ -50,6 +53,19 @@ export default function PRLCourses({ navigation }) {
       Alert.alert('Error', 'Failed to load data');
     }
   };
+
+  // Filter courses based on search query
+  const filteredCourses = courses?.filter(course => {
+    if (!searchQuery.trim()) return true;
+    
+    const query = searchQuery.toLowerCase();
+    return (
+      course.name?.toLowerCase().includes(query) ||
+      course.code?.toLowerCase().includes(query) ||
+      course.lecturerName?.toLowerCase().includes(query) ||
+      course.department?.toLowerCase().includes(query)
+    );
+  }) || [];
 
   const handleCreateCourse = async () => {
     if (!formData.name || !formData.code) {
@@ -105,7 +121,7 @@ export default function PRLCourses({ navigation }) {
           onPress: async () => {
             await dispatch(deleteCourse(course.id));
             await loadData();
-            setShowDetailsModal(false); // Close details modal if open
+            setShowDetailsModal(false);
           },
         },
       ]
@@ -163,9 +179,46 @@ export default function PRLCourses({ navigation }) {
     <ScreenContainer scrollable={false}>
       <CourseHeader
         title="Manage Courses"
-        onSearchPress={() => navigation.navigate('SearchCourses')}
+        onSearchPress={() => {
+          setIsSearching(!isSearching);
+          if (!isSearching) {
+            setSearchQuery('');
+          }
+        }}
         onFilterPress={() => {}}
       />
+      
+      {/* Search Bar */}
+      {isSearching && (
+        <View style={styles.searchContainer}>
+          <View style={styles.searchInputWrapper}>
+            <Ionicons name="search-outline" size={20} color={COLORS.textSecondary} style={styles.searchIcon} />
+            <Input
+              placeholder="Search courses by name, code, lecturer..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoFocus={true}
+              style={styles.searchInput}
+            />
+            {searchQuery ? (
+              <TouchableOpacity 
+                onPress={() => {
+                  setSearchQuery('');
+                  setIsSearching(false);
+                }}
+                style={styles.clearButton}
+              >
+                <Ionicons name="close-circle" size={20} color={COLORS.textSecondary} />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+          {searchQuery && (
+            <Text style={styles.searchResults}>
+              Found {filteredCourses.length} course{filteredCourses.length !== 1 ? 's' : ''}
+            </Text>
+          )}
+        </View>
+      )}
       
       <CourseStats stats={courseStats} />
       
@@ -178,8 +231,8 @@ export default function PRLCourses({ navigation }) {
       </View>
       
       <CourseList
-        courses={courses}
-        onCoursePress={viewCourseDetails} // Show details modal instead of navigating
+        courses={filteredCourses}
+        onCoursePress={viewCourseDetails}
         onEdit={editCourse}
         onDelete={handleDeleteCourse}
         showActions={true}
@@ -504,10 +557,39 @@ export default function PRLCourses({ navigation }) {
 const styles = StyleSheet.create({
   addButtonContainer: {
     paddingHorizontal: spacing.md,
-    marginVertical: spacing.md,
   },
   addButton: {
     width: '100%',
+  },
+  searchContainer: {
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
+  },
+  searchInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surfaceLight,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingHorizontal: spacing.sm,
+  },
+  searchIcon: {
+    marginRight: spacing.xs,
+  },
+  searchInput: {
+    flex: 1,
+    borderWidth: 0,
+    backgroundColor: 'transparent',
+  },
+  clearButton: {
+    padding: spacing.xs,
+  },
+  searchResults: {
+    ...typography.caption,
+    color: COLORS.textSecondary,
+    marginTop: spacing.xs,
+    paddingLeft: spacing.sm,
   },
   row: {
     flexDirection: 'row',
@@ -658,7 +740,6 @@ const styles = StyleSheet.create({
     flex: 1,
     marginHorizontal: spacing.xs,
   },
-  // Details Modal Styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
