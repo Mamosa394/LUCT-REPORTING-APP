@@ -17,7 +17,7 @@ export default function PLProfile({ navigation }) {
     phone: user?.phone || '',
     employeeId: user?.employeeId || '',
     department: user?.department || '',
-    position: user?.position || 'Principal Lecturer',
+    position: user?.position || 'Program Leader',
     office: user?.office || '',
   });
 
@@ -53,12 +53,7 @@ export default function PLProfile({ navigation }) {
                 {user?.name?.charAt(0).toUpperCase() || 'P'}
               </Text>
             </View>
-            <TouchableOpacity
-              style={styles.editIcon}
-              onPress={() => setIsEditing(!isEditing)}
-            >
-              <Ionicons name="camera-outline" size={20} color={COLORS.text} />
-            </TouchableOpacity>
+            
           </View>
           <Text style={styles.userName}>{user?.name}</Text>
           <Text style={styles.userRole}>Principal Lecturer</Text>
@@ -82,16 +77,7 @@ export default function PLProfile({ navigation }) {
             onChangeText={(text) => setFormData({ ...formData, email: text })}
             editable={isEditing}
             keyboardType="email-address"
-          />
-          
-          <Input
-            label="Phone Number"
-            value={formData.phone}
-            onChangeText={(text) => setFormData({ ...formData, phone: text })}
-            editable={isEditing}
-            keyboardType="phone-pad"
-          />
-          
+          />                    
           <Input
             label="Employee ID"
             value={formData.employeeId}
@@ -109,15 +95,6 @@ export default function PLProfile({ navigation }) {
             value={formData.position}
             editable={false}
           />
-          
-          <Input
-            label="Office Location"
-            value={formData.office}
-            onChangeText={(text) => setFormData({ ...formData, office: text })}
-            editable={isEditing}
-            placeholder="e.g., Room 301, CS Building"
-          />
-          
           {isEditing && (
             <View style={styles.buttonRow}>
               <Button
@@ -134,73 +111,6 @@ export default function PLProfile({ navigation }) {
             </View>
           )}
         </Card>
-
-        {/* System Administration */}
-        <Card style={styles.actionsCard}>
-          <Text style={styles.sectionTitle}>System Administration</Text>
-          
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('SystemSettings')}>
-            <View style={styles.actionLeft}>
-              <Ionicons name="settings-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.actionText}>System Settings</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('UserManagement')}>
-            <View style={styles.actionLeft}>
-              <Ionicons name="people-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.actionText}>User Management</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('AuditLogs')}>
-            <View style={styles.actionLeft}>
-              <Ionicons name="list-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.actionText}>Audit Logs</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('BackupRestore')}>
-            <View style={styles.actionLeft}>
-              <Ionicons name="cloud-upload-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.actionText}>Backup & Restore</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-          </TouchableOpacity>
-        </Card>
-
-        {/* Account Actions */}
-        <Card style={styles.actionsCard}>
-          <Text style={styles.sectionTitle}>Account Settings</Text>
-          
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('ChangePassword')}>
-            <View style={styles.actionLeft}>
-              <Ionicons name="lock-closed-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.actionText}>Change Password</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('TwoFactorAuth')}>
-            <View style={styles.actionLeft}>
-              <Ionicons name="shield-checkmark-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.actionText}>Two-Factor Authentication</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('NotificationPreferences')}>
-            <View style={styles.actionLeft}>
-              <Ionicons name="notifications-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.actionText}>Notification Preferences</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-          </TouchableOpacity>
-        </Card>
-
         {/* Logout Button */}
         <Button
           title="Logout"

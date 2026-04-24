@@ -42,10 +42,8 @@ import PRLProfile from '../prl/prlProfile';
 // PL screens (Program Leader)
 import PLDashboard from '../pl/plDashboard';
 import PLCourses from '../pl/plCourses';
-import PLModules from '../pl/plModules';
 import PLLecturers from '../pl/plLecturers';
 import PLReports from '../pl/plReports';
-import PLMonitoring from '../pl/plMonitoring';
 import PLRatings from '../pl/plRatings';
 import PLProfile from '../pl/plProfile';
 
@@ -239,17 +237,6 @@ function PLStack() {
           headerTintColor: COLORS.primary,
         }}
       />
-      <Stack.Screen 
-        name="PLMonitoring" 
-        component={PLMonitoring}
-        options={{ 
-          headerShown: true,
-          title: 'Program Monitoring',
-          headerStyle: { backgroundColor: COLORS.headerBackground },
-          headerTitleStyle: { color: COLORS.headerText },
-          headerTintColor: COLORS.primary,
-        }}
-      />
     </Stack.Navigator>
   );
 }
@@ -263,10 +250,8 @@ function PLTabs() {
           let iconName;
           if (route.name === 'Dashboard') iconName = focused ? 'home' : 'home-outline';
           else if (route.name === 'Courses') iconName = focused ? 'book' : 'book-outline';
-          else if (route.name === 'Modules') iconName = focused ? 'layers' : 'layers-outline';
           else if (route.name === 'Lecturers') iconName = focused ? 'people' : 'people-outline';
           else if (route.name === 'ReportsTab') iconName = focused ? 'document-text' : 'document-text-outline';
-          else if (route.name === 'MonitoringTab') iconName = focused ? 'analytics' : 'analytics-outline';
           else if (route.name === 'Ratings') iconName = focused ? 'star' : 'star-outline';
           else if (route.name === 'Profile') iconName = focused ? 'person' : 'person-outline';
           return <Ionicons name={iconName} size={size} color={color} />;
@@ -280,17 +265,11 @@ function PLTabs() {
     >
       <Tab.Screen name="Dashboard" component={PLDashboard} />
       <Tab.Screen name="Courses" component={PLCourses} />
-      <Tab.Screen name="Modules" component={PLModules} />
       <Tab.Screen name="Lecturers" component={PLLecturers} />
       <Tab.Screen 
         name="ReportsTab" 
         component={PLReports}
         options={{ title: 'Reports' }}
-      />
-      <Tab.Screen 
-        name="MonitoringTab" 
-        component={PLMonitoring}
-        options={{ title: 'Monitoring' }}
       />
       <Tab.Screen name="Ratings" component={PLRatings} />
       <Tab.Screen name="Profile" component={PLProfile} />

@@ -1,101 +1,45 @@
 // app/pl/Lecturers.js
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
-import { ScreenContainer, LoadingSpinner, AppModal, Input, Button, Card } from '../../src/components/UI';
+import { ScreenContainer, LoadingSpinner, Card } from '../../src/components/UI';
 import { COLORS, spacing, typography } from '../../config/theme';
-import { fetchLecturers, createLecturer, updateLecturer, deleteLecturer } from '../../src/store/monitoringSlice'; 
+import { fetchLecturers, selectLecturers } from '../../src/store/authSlice';
+import { deleteUser } from '../../src/services/firebase';
 
 export default function PLLecturers({ navigation }) {
   const dispatch = useDispatch();
-  const { lecturers, isLoading } = useSelector(state => state.monitoring);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingLecturer, setEditingLecturer] = useState(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    employeeId: '',
-    department: '',
-    position: 'Lecturer',
-    phone: '',
-    specialization: '',
-  });
+  const lecturers = useSelector(selectLecturers);
+  const { usersLoading } = useSelector(state => state.auth);
 
   useEffect(() => {
-    loadLecturers();
+    dispatch(fetchLecturers());
   }, []);
-
-  const loadLecturers = async () => {
-    await dispatch(fetchLecturers());
-  };
-
-  const handleCreateLecturer = async () => {
-    if (!formData.name || !formData.email || !formData.employeeId) {
-      Alert.alert('Error', 'Please fill in all required fields');
-      return;
-    }
-    
-    await dispatch(createLecturer(formData));
-    setShowCreateModal(false);
-    resetForm();
-    loadLecturers();
-    Alert.alert('Success', 'Lecturer added successfully');
-  };
-
-  const handleUpdateLecturer = async () => {
-    await dispatch(updateLecturer({ id: editingLecturer.id, data: formData }));
-    setEditingLecturer(null);
-    resetForm();
-    loadLecturers();
-    Alert.alert('Success', 'Lecturer updated successfully');
-  };
 
   const handleDeleteLecturer = (lecturer) => {
     Alert.alert(
       'Delete Lecturer',
-      `Are you sure you want to delete ${lecturer.name}? This action cannot be undone.`,
+      `Delete ${lecturer.name}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            await dispatch(deleteLecturer(lecturer.id));
-            loadLecturers();
-            Alert.alert('Success', 'Lecturer deleted successfully');
+            try {
+              await deleteUser(lecturer.id);
+              dispatch(fetchLecturers());
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete lecturer');
+            }
           },
         },
       ]
     );
   };
 
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      email: '',
-      employeeId: '',
-      department: '',
-      position: 'Lecturer',
-      phone: '',
-      specialization: '',
-    });
-  };
-
-  const editLecturer = (lecturer) => {
-    setEditingLecturer(lecturer);
-    setFormData({
-      name: lecturer.name,
-      email: lecturer.email,
-      employeeId: lecturer.employeeId,
-      department: lecturer.department,
-      position: lecturer.position,
-      phone: lecturer.phone || '',
-      specialization: lecturer.specialization || '',
-    });
-  };
-
-  if (isLoading && !lecturers) {
+  if (usersLoading && lecturers.length === 0) {
     return <LoadingSpinner fullScreen />;
   }
 
@@ -104,38 +48,26 @@ export default function PLLecturers({ navigation }) {
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Manage Lecturers</Text>
-          <Button
-            title="+ Add Lecturer"
-            onPress={() => setShowCreateModal(true)}
-            size="sm"
-          />
+          <Text style={styles.subtitle}>{lecturers.length} lecturers</Text>
         </View>
 
-        {lecturers?.map((lecturer) => (
+        {lecturers.map((lecturer) => (
           <Card key={lecturer.id} style={styles.lecturerCard}>
             <View style={styles.lecturerHeader}>
               <View style={styles.lecturerAvatar}>
-                <Text style={styles.avatarText}>{lecturer.name?.charAt(0)}</Text>
+                <Text style={styles.avatarText}>{lecturer.name?.charAt(0)?.toUpperCase()}</Text>
               </View>
               <View style={styles.lecturerInfo}>
                 <Text style={styles.lecturerName}>{lecturer.name}</Text>
-                <Text style={styles.lecturerDept}>{lecturer.department}</Text>
+                <Text style={styles.lecturerDept}>{lecturer.department || lecturer.faculty || 'No department'}</Text>
                 <Text style={styles.lecturerId}>ID: {lecturer.employeeId}</Text>
               </View>
-              <View style={styles.lecturerActions}>
-                <TouchableOpacity
-                  onPress={() => editLecturer(lecturer)}
-                  style={styles.actionIcon}
-                >
-                  <Ionicons name="create-outline" size={20} color={COLORS.primary} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => handleDeleteLecturer(lecturer)}
-                  style={styles.actionIcon}
-                >
-                  <Ionicons name="trash-outline" size={20} color={COLORS.error} />
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                onPress={() => handleDeleteLecturer(lecturer)}
+                style={styles.deleteBtn}
+              >
+                <Ionicons name="trash-outline" size={20} color={COLORS.error} />
+              </TouchableOpacity>
             </View>
             
             <View style={styles.lecturerDetails}>
@@ -149,106 +81,20 @@ export default function PLLecturers({ navigation }) {
                   <Text style={styles.detailText}>{lecturer.phone}</Text>
                 </View>
               )}
-              {lecturer.specialization && (
-                <View style={styles.detailItem}>
-                  <Ionicons name="school-outline" size={14} color={COLORS.textSecondary} />
-                  <Text style={styles.detailText}>{lecturer.specialization}</Text>
-                </View>
-              )}
-            </View>
-            
-            <View style={styles.lecturerStats}>
-              <View style={styles.statBadge}>
-                <Text style={styles.statText}>Rating: {lecturer.averageRating?.toFixed(1) || 'N/A'}⭐</Text>
-              </View>
-              <View style={styles.statBadge}>
-                <Text style={styles.statText}>Courses: {lecturer.courseCount || 0}</Text>
+              <View style={styles.detailItem}>
+                <Ionicons name="person-outline" size={14} color={COLORS.textSecondary} />
+                <Text style={styles.detailText}>{lecturer.role || 'Lecturer'}</Text>
               </View>
             </View>
           </Card>
         ))}
 
-        {/* Create/Edit Modal */}
-        <AppModal
-          visible={showCreateModal || !!editingLecturer}
-          onClose={() => {
-            setShowCreateModal(false);
-            setEditingLecturer(null);
-            resetForm();
-          }}
-          title={editingLecturer ? 'Edit Lecturer' : 'Add New Lecturer'}
-        >
-          <ScrollView showsVerticalScrollIndicator={false}>
-            <Input
-              label="Full Name *"
-              value={formData.name}
-              onChangeText={(text) => setFormData({ ...formData, name: text })}
-              placeholder="e.g., Dr. John Smith"
-            />
-            
-            <Input
-              label="Email *"
-              value={formData.email}
-              onChangeText={(text) => setFormData({ ...formData, email: text })}
-              placeholder="john.smith@luct.edu"
-              keyboardType="email-address"
-            />
-            
-            <Input
-              label="Employee ID *"
-              value={formData.employeeId}
-              onChangeText={(text) => setFormData({ ...formData, employeeId: text.toUpperCase() })}
-              placeholder="e.g., LCT00123"
-            />
-            
-            <Input
-              label="Department"
-              value={formData.department}
-              onChangeText={(text) => setFormData({ ...formData, department: text })}
-              placeholder="e.g., Computer Science"
-            />
-            
-            <Input
-              label="Position"
-              value={formData.position}
-              onChangeText={(text) => setFormData({ ...formData, position: text })}
-              placeholder="e.g., Senior Lecturer"
-            />
-            
-            <Input
-              label="Phone Number"
-              value={formData.phone}
-              onChangeText={(text) => setFormData({ ...formData, phone: text })}
-              placeholder="+1234567890"
-              keyboardType="phone-pad"
-            />
-            
-            <Input
-              label="Specialization"
-              value={formData.specialization}
-              onChangeText={(text) => setFormData({ ...formData, specialization: text })}
-              placeholder="e.g., Mobile Development, AI"
-            />
-            
-            <View style={styles.modalButtons}>
-              <Button
-                title="Cancel"
-                variant="secondary"
-                onPress={() => {
-                  setShowCreateModal(false);
-                  setEditingLecturer(null);
-                  resetForm();
-                }}
-                style={styles.modalButton}
-              />
-              <Button
-                title={editingLecturer ? 'Update' : 'Create'}
-                onPress={editingLecturer ? handleUpdateLecturer : handleCreateLecturer}
-                style={styles.modalButton}
-              />
-            </View>
-          </ScrollView>
-        </AppModal>
+        {lecturers.length === 0 && (
+          <View style={styles.emptyState}>
+            <Ionicons name="people-outline" size={48} color={COLORS.textDisabled} />
+            <Text style={styles.emptyText}>No lecturers found</Text>
+          </View>
+        )}
       </View>
     </ScreenContainer>
   );
@@ -259,14 +105,15 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: spacing.md,
   },
   headerTitle: {
-    ...typography.h3,
+    ...typography.h2,
     color: COLORS.text,
+  },
+  subtitle: {
+    ...typography.body,
+    color: COLORS.textSecondary,
   },
   lecturerCard: {
     marginBottom: spacing.md,
@@ -307,49 +154,29 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: 2,
   },
-  lecturerActions: {
-    flexDirection: 'row',
-  },
-  actionIcon: {
+  deleteBtn: {
     padding: spacing.sm,
-    marginLeft: spacing.xs,
   },
   lecturerDetails: {
-    marginVertical: spacing.sm,
+    marginTop: spacing.sm,
   },
   detailItem: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: spacing.xs,
+    gap: spacing.xs,
   },
   detailText: {
     ...typography.bodySmall,
     color: COLORS.textSecondary,
-    marginLeft: spacing.xs,
   },
-  lecturerStats: {
-    flexDirection: 'row',
-    marginTop: spacing.sm,
+  emptyState: {
+    alignItems: 'center',
+    padding: spacing.xl,
   },
-  statBadge: {
-    backgroundColor: COLORS.surfaceLight,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: 12,
-    marginRight: spacing.sm,
-  },
-  statText: {
-    ...typography.caption,
+  emptyText: {
+    ...typography.body,
     color: COLORS.textSecondary,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: spacing.lg,
-    marginBottom: spacing.md,
-  },
-  modalButton: {
-    flex: 1,
-    marginHorizontal: spacing.xs,
+    marginTop: spacing.md,
   },
 });

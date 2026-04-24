@@ -1,289 +1,318 @@
 // app/pl/Reports.js
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
-import { ScreenContainer, LoadingSpinner, AppModal, Button, Input, Card } from '../../src/components/UI';
-import { ReportList, ReportFilter, ReportStats } from '../../src/components/Reports';
+import { ScreenContainer, LoadingSpinner, Card } from '../../src/components/UI';
 import { COLORS, spacing, typography } from '../../config/theme';
-import { fetchReports, updateReportStatus, deleteReport } from '../../src/store/monitoringSlice';
+import { fetchReports } from '../../src/store/monitoringSlice';
 
 export default function PLReports({ navigation }) {
   const dispatch = useDispatch();
-  const { reports, isLoading } = useSelector(state => state.monitoring);
-  const [showFilter, setShowFilter] = useState(false);
+  const { reports, reportsLoading } = useSelector(state => state.monitoring);
   const [selectedReport, setSelectedReport] = useState(null);
-  const [feedback, setFeedback] = useState('');
-  const [filters, setFilters] = useState({});
 
   useEffect(() => {
-    loadReports();
-  }, [filters]);
+    dispatch(fetchReports());
+  }, []);
 
-  const loadReports = async () => {
-    await dispatch(fetchReports(filters));
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'approved': return COLORS.success;
+      case 'rejected': return COLORS.error;
+      case 'pending': return COLORS.warning;
+      default: return COLORS.textSecondary;
+    }
   };
 
-  const handleStatusUpdate = async (reportId, status, feedbackText = '') => {
-    await dispatch(updateReportStatus({ reportId, status, feedback: feedbackText }));
-    setSelectedReport(null);
-    setFeedback('');
-    loadReports();
-    Alert.alert('Success', `Report ${status} successfully`);
-  };
-
-  const handleDeleteReport = (report) => {
-    Alert.alert(
-      'Delete Report',
-      `Are you sure you want to delete ${report.title}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            await dispatch(deleteReport(report.id));
-            loadReports();
-            Alert.alert('Success', 'Report deleted successfully');
-          },
-        },
-      ]
-    );
-  };
-
-  const handleReportPress = (report) => {
-    setSelectedReport(report);
-  };
-
-  const reportStats = {
-    total: reports?.length || 0,
-    pending: reports?.filter(r => r.status === 'pending').length || 0,
-    approved: reports?.filter(r => r.status === 'approved').length || 0,
-    rejected: reports?.filter(r => r.status === 'rejected').length || 0,
-  };
-
-  if (isLoading && !reports) {
+  if (reportsLoading && reports.length === 0) {
     return <LoadingSpinner fullScreen />;
   }
 
-  return (
-    <ScreenContainer scrollable={false}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Reports</Text>
-        <TouchableOpacity onPress={() => setShowFilter(true)} style={styles.filterButton}>
-          <Ionicons name="filter-outline" size={24} color={COLORS.text} />
-        </TouchableOpacity>
-      </View>
-      
-      <ReportStats stats={reportStats} />
-      
-      <ReportList
-        reports={reports}
-        onReportPress={handleReportPress}
-        onDelete={handleDeleteReport}
-        showActions={true}
-      />
+  if (selectedReport) {
+    return (
+      <ScreenContainer scrollable={true}>
+        <View style={styles.container}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => setSelectedReport(null)}>
+            <Ionicons name="arrow-back" size={24} color={COLORS.primary} />
+            <Text style={styles.backText}>Back to Reports</Text>
+          </TouchableOpacity>
 
-      {/* Report Details Modal */}
-      <AppModal
-        visible={!!selectedReport}
-        onClose={() => {
-          setSelectedReport(null);
-          setFeedback('');
-        }}
-        title="Report Details"
-      >
-        {selectedReport && (
-          <ScrollView showsVerticalScrollIndicator={false}>
-            <Card style={styles.detailCard}>
-              <Text style={styles.detailTitle}>{selectedReport.title}</Text>
-              <Text style={styles.detailType}>Type: {selectedReport.type?.toUpperCase()}</Text>
-              
-              <View style={styles.metaInfo}>
-                <Text style={styles.metaText}>
-                  Submitted by: {selectedReport.submittedBy?.name}
-                </Text>
-                <Text style={styles.metaText}>
-                  Date: {new Date(selectedReport.createdAt).toLocaleDateString()}
+          <Card style={styles.detailCard}>
+            <View style={styles.statusRow}>
+              <View style={[styles.statusBadge, { backgroundColor: getStatusColor(selectedReport.status) + '20' }]}>
+                <Text style={[styles.statusText, { color: getStatusColor(selectedReport.status) }]}>
+                  {selectedReport.status?.toUpperCase()}
                 </Text>
               </View>
-              
-              {selectedReport.course && (
-                <Text style={styles.detailCourse}>
-                  Course: {selectedReport.course.name} ({selectedReport.course.code})
-                </Text>
-              )}
-              
-              <Text style={styles.detailDescription}>{selectedReport.description}</Text>
-              
-              {selectedReport.attachments?.length > 0 && (
-                <View style={styles.attachments}>
-                  <Text style={styles.attachmentsTitle}>Attachments:</Text>
-                  {selectedReport.attachments.map((file, index) => (
-                    <TouchableOpacity key={index} style={styles.attachment}>
-                      <Ionicons name="document-outline" size={16} color={COLORS.primary} />
-                      <Text style={styles.attachmentText}>File {index + 1}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-            </Card>
+              <Text style={styles.dateText}>
+                {selectedReport.createdAt ? new Date(selectedReport.createdAt).toLocaleDateString() : ''}
+              </Text>
+            </View>
+
+            <Text style={styles.reportTitle}>{selectedReport.title || 'Untitled Report'}</Text>
             
-            <View style={styles.feedbackSection}>
-              <Input
-                label="Feedback"
-                value={feedback}
-                onChangeText={setFeedback}
-                placeholder="Provide feedback on this report..."
-                multiline
-                numberOfLines={4}
-              />
-              
-              <View style={styles.actionButtons}>
-                <Button
-                  title="Delete"
-                  variant="danger"
-                  onPress={() => handleDeleteReport(selectedReport)}
-                  style={styles.actionButton}
-                />
-                <Button
-                  title="Reject"
-                  variant="secondary"
-                  onPress={() => handleStatusUpdate(selectedReport.id, 'rejected', feedback)}
-                  style={styles.actionButton}
-                />
-                <Button
-                  title="Approve"
-                  variant="primary"
-                  onPress={() => handleStatusUpdate(selectedReport.id, 'approved', feedback)}
-                  style={styles.actionButton}
-                />
+            <View style={styles.infoGrid}>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoLabel}>Course</Text>
+                <Text style={styles.infoValue}>{selectedReport.courseName || 'N/A'}</Text>
+              </View>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoLabel}>Course Code</Text>
+                <Text style={styles.infoValue}>{selectedReport.courseCode || 'N/A'}</Text>
+              </View>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoLabel}>Lecturer</Text>
+                <Text style={styles.infoValue}>{selectedReport.lecturerName || 'N/A'}</Text>
+              </View>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoLabel}>Week</Text>
+                <Text style={styles.infoValue}>{selectedReport.weekOfReporting || 'N/A'}</Text>
+              </View>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoLabel}>Students Present</Text>
+                <Text style={styles.infoValue}>
+                  {selectedReport.actualStudentsPresent}/{selectedReport.totalRegisteredStudents}
+                </Text>
+              </View>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoLabel}>Attendance Rate</Text>
+                <Text style={styles.infoValue}>{selectedReport.attendanceRate}%</Text>
               </View>
             </View>
-            
-            {selectedReport.feedback && (
-              <Card style={styles.feedbackCard}>
-                <Text style={styles.feedbackTitle}>Previous Feedback:</Text>
-                <Text style={styles.feedbackText}>{selectedReport.feedback}</Text>
-                <Text style={styles.feedbackBy}>
-                  Reviewed by: {selectedReport.reviewedBy?.name}
-                </Text>
-              </Card>
-            )}
-          </ScrollView>
-        )}
-      </AppModal>
 
-      {/* Filter Modal */}
-      <AppModal
-        visible={showFilter}
-        onClose={() => setShowFilter(false)}
-        title="Filter Reports"
-      >
-        <ReportFilter
-          filters={filters}
-          onFilterChange={(key, value) => {
-            setFilters({ ...filters, [key]: value });
-            if (value === 'all') {
-              const newFilters = { ...filters };
-              delete newFilters[key];
-              setFilters(newFilters);
-            }
-          }}
-          onClose={() => setShowFilter(false)}
-        />
-        <Button
-          title="Apply Filters"
-          onPress={() => {
-            loadReports();
-            setShowFilter(false);
-          }}
-          style={styles.applyButton}
-        />
-      </AppModal>
+            {selectedReport.topicTaught && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Topic Taught</Text>
+                <Text style={styles.sectionText}>{selectedReport.topicTaught}</Text>
+              </View>
+            )}
+
+            {selectedReport.learningOutcomes && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Learning Outcomes</Text>
+                <Text style={styles.sectionText}>{selectedReport.learningOutcomes}</Text>
+              </View>
+            )}
+
+            {selectedReport.description && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Description</Text>
+                <Text style={styles.sectionText}>{selectedReport.description}</Text>
+              </View>
+            )}
+          </Card>
+
+          {/* PRL Feedback */}
+          {selectedReport.feedback && (
+            <Card style={styles.feedbackCard}>
+              <Text style={styles.feedbackTitle}>PRL Feedback</Text>
+              <Text style={styles.feedbackText}>{selectedReport.feedback}</Text>
+              {selectedReport.reviewedByName && (
+                <Text style={styles.feedbackBy}>Reviewed by: {selectedReport.reviewedByName}</Text>
+              )}
+              {selectedReport.reviewedAt && (
+                <Text style={styles.feedbackDate}>
+                  {new Date(selectedReport.reviewedAt).toLocaleDateString()}
+                </Text>
+              )}
+            </Card>
+          )}
+
+          {!selectedReport.feedback && (
+            <Card style={styles.noFeedbackCard}>
+              <Ionicons name="information-circle-outline" size={24} color={COLORS.textSecondary} />
+              <Text style={styles.noFeedbackText}>No PRL feedback yet</Text>
+            </Card>
+          )}
+        </View>
+      </ScreenContainer>
+    );
+  }
+
+  return (
+    <ScreenContainer scrollable={true}>
+      <View style={styles.container}>
+        <Text style={styles.headerTitle}>Reports</Text>
+        <Text style={styles.subtitle}>{reports.length} reports</Text>
+
+        {reports.map((report) => (
+          <TouchableOpacity
+            key={report.id}
+            style={styles.reportCard}
+            onPress={() => setSelectedReport(report)}
+          >
+            <View style={styles.reportHeader}>
+              <View style={styles.reportInfo}>
+                <Text style={styles.reportName}>{report.courseName || report.title || 'Untitled'}</Text>
+                <Text style={styles.reportCode}>{report.courseCode}</Text>
+                <Text style={styles.reportLecturer}>{report.lecturerName}</Text>
+              </View>
+              <View style={styles.reportRight}>
+                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(report.status) + '20' }]}>
+                  <Text style={[styles.statusText, { color: getStatusColor(report.status) }]}>
+                    {report.status?.toUpperCase()}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
+              </View>
+            </View>
+            <View style={styles.reportMeta}>
+              <Text style={styles.reportDate}>
+                Week {report.weekOfReporting} • {report.actualStudentsPresent}/{report.totalRegisteredStudents} students
+              </Text>
+              <Text style={styles.reportDate}>
+                {report.createdAt ? new Date(report.createdAt).toLocaleDateString() : ''}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+
+        {reports.length === 0 && (
+          <View style={styles.emptyState}>
+            <Ionicons name="document-text-outline" size={48} color={COLORS.textDisabled} />
+            <Text style={styles.emptyText}>No reports yet</Text>
+          </View>
+        )}
+      </View>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  container: {
     padding: spacing.md,
-    backgroundColor: COLORS.background,
   },
   headerTitle: {
     ...typography.h2,
     color: COLORS.text,
   },
-  filterButton: {
-    padding: spacing.sm,
+  subtitle: {
+    ...typography.body,
+    color: COLORS.textSecondary,
+    marginBottom: spacing.lg,
+  },
+  reportCard: {
+    backgroundColor: COLORS.cardBackground,
+    borderRadius: 12,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  reportHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  reportInfo: {
+    flex: 1,
+  },
+  reportName: {
+    ...typography.body,
+    color: COLORS.text,
+    fontWeight: '600',
+  },
+  reportCode: {
+    ...typography.caption,
+    color: COLORS.primary,
+  },
+  reportLecturer: {
+    ...typography.caption,
+    color: COLORS.textSecondary,
+  },
+  reportRight: {
+    alignItems: 'flex-end',
+    gap: spacing.xs,
+  },
+  statusBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: 12,
+  },
+  statusText: {
+    ...typography.caption,
+    fontWeight: '600',
+    fontSize: 10,
+  },
+  reportMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: spacing.sm,
+  },
+  reportDate: {
+    ...typography.caption,
+    color: COLORS.textSecondary,
+    fontSize: 11,
+  },
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+    gap: spacing.xs,
+  },
+  backText: {
+    ...typography.body,
+    color: COLORS.primary,
   },
   detailCard: {
     marginBottom: spacing.md,
+    padding: spacing.md,
   },
-  detailTitle: {
-    ...typography.h4,
-    color: COLORS.text,
-    marginBottom: spacing.sm,
-  },
-  detailType: {
-    ...typography.caption,
-    color: COLORS.primary,
-    marginBottom: spacing.sm,
-  },
-  metaInfo: {
-    marginVertical: spacing.sm,
-  },
-  metaText: {
-    ...typography.bodySmall,
-    color: COLORS.textSecondary,
-    marginBottom: spacing.xs,
-  },
-  detailCourse: {
-    ...typography.body,
-    color: COLORS.textSecondary,
-    marginVertical: spacing.sm,
-  },
-  detailDescription: {
-    ...typography.body,
-    color: COLORS.text,
-    marginVertical: spacing.sm,
-    lineHeight: 20,
-  },
-  attachments: {
-    marginTop: spacing.md,
-  },
-  attachmentsTitle: {
-    ...typography.body,
-    color: COLORS.textSecondary,
-    marginBottom: spacing.sm,
-  },
-  attachment: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.xs,
-  },
-  attachmentText: {
-    ...typography.bodySmall,
-    color: COLORS.primary,
-    marginLeft: spacing.xs,
-  },
-  feedbackSection: {
-    marginTop: spacing.md,
-  },
-  actionButtons: {
+  statusRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: spacing.md,
+    alignItems: 'center',
+    marginBottom: spacing.md,
   },
-  actionButton: {
-    flex: 1,
-    marginHorizontal: spacing.xs,
+  dateText: {
+    ...typography.caption,
+    color: COLORS.textSecondary,
+  },
+  reportTitle: {
+    ...typography.h3,
+    color: COLORS.text,
+    marginBottom: spacing.md,
+  },
+  infoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: spacing.md,
+  },
+  infoItem: {
+    width: '50%',
+    marginBottom: spacing.sm,
+  },
+  infoLabel: {
+    ...typography.caption,
+    color: COLORS.textSecondary,
+    fontSize: 11,
+  },
+  infoValue: {
+    ...typography.bodySmall,
+    color: COLORS.text,
+  },
+  section: {
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  sectionTitle: {
+    ...typography.body,
+    color: COLORS.text,
+    fontWeight: '600',
+    marginBottom: spacing.xs,
+  },
+  sectionText: {
+    ...typography.body,
+    color: COLORS.textSecondary,
+    lineHeight: 20,
   },
   feedbackCard: {
-    marginTop: spacing.md,
+    padding: spacing.md,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.primary,
   },
   feedbackTitle: {
     ...typography.body,
@@ -294,13 +323,35 @@ const styles = StyleSheet.create({
   feedbackText: {
     ...typography.body,
     color: COLORS.textSecondary,
-    marginBottom: spacing.sm,
+    lineHeight: 20,
   },
   feedbackBy: {
     ...typography.caption,
     color: COLORS.textSecondary,
+    marginTop: spacing.sm,
   },
-  applyButton: {
-    marginTop: spacing.lg,
+  feedbackDate: {
+    ...typography.caption,
+    color: COLORS.textDisabled,
+    marginTop: spacing.xs,
+  },
+  noFeedbackCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  noFeedbackText: {
+    ...typography.body,
+    color: COLORS.textSecondary,
+  },
+  emptyState: {
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  emptyText: {
+    ...typography.body,
+    color: COLORS.textSecondary,
+    marginTop: spacing.md,
   },
 });

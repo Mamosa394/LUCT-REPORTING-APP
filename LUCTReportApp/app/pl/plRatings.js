@@ -4,33 +4,62 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer, LoadingSpinner, Card } from '../../src/components/UI';
-import { RatingSummary, RatingCard, RatingBar } from '../../src/components/Ratings';
+import { RatingCard, StarRating } from '../../src/components/Ratings';
 import { COLORS, spacing, typography } from '../../config/theme';
-import { fetchRatings, fetchLecturers } from '../../src/store/monitoringSlice'; // Correct
+import { fetchRatings, fetchRatingsAnalytics, selectRatings, selectRatingsLoading } from '../../src/store/Ratingsslice';
+import { fetchLecturers, selectLecturers } from '../../src/store/authSlice';
 
 export default function PLRatings({ navigation }) {
   const dispatch = useDispatch();
-  const { ratings, averages, isLoading } = useSelector(state => state.monitoring);
-  const { lecturers } = useSelector(state => state.monitoring);
+  const ratings = useSelector(selectRatings);
+  const isLoading = useSelector(selectRatingsLoading);
+  const lecturers = useSelector(selectLecturers);
   const [selectedLecturer, setSelectedLecturer] = useState(null);
-  const [selectedPeriod, setSelectedPeriod] = useState('all');
+  const [lecturerRatings, setLecturerRatings] = useState([]);
 
   useEffect(() => {
-    loadRatingsData();
+    loadData();
   }, []);
 
-  const loadRatingsData = async () => {
+  const loadData = async () => {
     await Promise.all([
       dispatch(fetchRatings()),
       dispatch(fetchLecturers()),
     ]);
   };
 
+  const handleLecturerSelect = async (lecturer) => {
+    if (selectedLecturer?.id === lecturer.id) {
+      setSelectedLecturer(null);
+      setLecturerRatings([]);
+      return;
+    }
+    setSelectedLecturer(lecturer);
+    
+    const filtered = ratings.filter(r => r.ratedUserId === lecturer.id);
+    setLecturerRatings(filtered);
+  };
+
   const getLecturerAverage = (lecturerId) => {
-    const lecturerRatings = ratings?.filter(r => r.lecturerId === lecturerId) || [];
-    if (lecturerRatings.length === 0) return 0;
-    const sum = lecturerRatings.reduce((acc, r) => acc + (r.overall || 0), 0);
-    return (sum / lecturerRatings.length).toFixed(1);
+    const lecturerRatingList = ratings.filter(r => r.ratedUserId === lecturerId);
+    if (lecturerRatingList.length === 0) return 0;
+    
+    let total = 0;
+    let count = 0;
+    lecturerRatingList.forEach(r => {
+      if (r.aspects?.overall) {
+        total += r.aspects.overall;
+        count++;
+      } else if (r.rating) {
+        total += r.rating;
+        count++;
+      }
+    });
+    return count > 0 ? (total / count).toFixed(1) : 0;
+  };
+
+  const getLecturerRatingCount = (lecturerId) => {
+    return ratings.filter(r => r.ratedUserId === lecturerId).length;
   };
 
   if (isLoading) {
@@ -39,140 +68,62 @@ export default function PLRatings({ navigation }) {
 
   return (
     <ScreenContainer scrollable={true}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.container}>
-          {/* Overall Rating Summary */}
-          {averages && (
-            <RatingSummary averages={averages} />
-          )}
+      <View style={styles.container}>
+        <Text style={styles.title}>Lecturer Ratings</Text>
+        <Text style={styles.subtitle}>See how students rated your lecturers</Text>
 
-          {/* Period Selector */}
-          <Card style={styles.periodCard}>
-            <View style={styles.periodSelector}>
-              <TouchableOpacity
-                style={[styles.periodButton, selectedPeriod === 'all' && styles.periodButtonActive]}
-                onPress={() => setSelectedPeriod('all')}
-              >
-                <Text style={[styles.periodText, selectedPeriod === 'all' && styles.periodTextActive]}>
-                  All Time
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.periodButton, selectedPeriod === 'semester' && styles.periodButtonActive]}
-                onPress={() => setSelectedPeriod('semester')}
-              >
-                <Text style={[styles.periodText, selectedPeriod === 'semester' && styles.periodTextActive]}>
-                  This Semester
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.periodButton, selectedPeriod === 'month' && styles.periodButtonActive]}
-                onPress={() => setSelectedPeriod('month')}
-              >
-                <Text style={[styles.periodText, selectedPeriod === 'month' && styles.periodTextActive]}>
-                  This Month
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </Card>
+        {/* Lecturer List */}
+        {lecturers.map((lecturer) => {
+          const avg = getLecturerAverage(lecturer.id);
+          const count = getLecturerRatingCount(lecturer.id);
+          const isSelected = selectedLecturer?.id === lecturer.id;
 
-          {/* Lecturers Ranking */}
-          <Card style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Lecturer Rankings</Text>
-            {lecturers?.sort((a, b) => getLecturerAverage(b.id) - getLecturerAverage(a.id)).map((lecturer, index) => (
+          return (
+            <View key={lecturer.id}>
               <TouchableOpacity
-                key={lecturer.id}
-                style={styles.rankingItem}
-                onPress={() => setSelectedLecturer(lecturer)}
+                style={[styles.lecturerItem, isSelected && styles.lecturerItemSelected]}
+                onPress={() => handleLecturerSelect(lecturer)}
               >
-                <View style={styles.rankingLeft}>
-                  <View style={[styles.rankingBadge, index < 3 && styles.topRanking]}>
-                    <Text style={styles.rankingNumber}>{index + 1}</Text>
+                <View style={styles.lecturerInfo}>
+                  <View style={styles.avatar}>
+                    <Text style={styles.avatarText}>{lecturer.name?.charAt(0)?.toUpperCase()}</Text>
                   </View>
-                  <View>
-                    <Text style={styles.rankingName}>{lecturer.name}</Text>
-                    <Text style={styles.rankingDept}>{lecturer.department}</Text>
+                  <View style={styles.lecturerDetails}>
+                    <Text style={styles.lecturerName}>{lecturer.name}</Text>
+                    <Text style={styles.lecturerDept}>{lecturer.department || lecturer.faculty}</Text>
+                    <Text style={styles.ratingCount}>{count} rating{count !== 1 ? 's' : ''}</Text>
                   </View>
                 </View>
-                <View style={styles.rankingRight}>
-                  <Text style={styles.rankingScore}>{getLecturerAverage(lecturer.id)}</Text>
-                  <View style={styles.rankingStars}>
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <Ionicons
-                        key={star}
-                        name={star <= Math.round(getLecturerAverage(lecturer.id)) ? 'star' : 'star-outline'}
-                        size={12}
-                        color={star <= Math.round(getLecturerAverage(lecturer.id)) ? '#FFC107' : COLORS.textDisabled}
-                      />
-                    ))}
-                  </View>
+                <View style={styles.ratingSection}>
+                  <Text style={[styles.ratingValue, { color: avg > 3 ? COLORS.success : avg > 2 ? COLORS.warning : COLORS.error }]}>
+                    {avg}
+                  </Text>
+                  <StarRating value={Math.round(avg)} readonly size={12} />
                 </View>
+                <Ionicons name={isSelected ? "chevron-up" : "chevron-down"} size={20} color={COLORS.textSecondary} />
               </TouchableOpacity>
-            ))}
-          </Card>
 
-          {/* Rating Distribution by Department */}
-          <Card style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Ratings by Department</Text>
-            {['Computer Science', 'Information Technology', 'Software Engineering', 'Data Science'].map((dept) => {
-              const deptRatings = ratings?.filter(r => r.lecturer?.department === dept) || [];
-              const avgRating = deptRatings.length > 0 
-                ? deptRatings.reduce((sum, r) => sum + r.overall, 0) / deptRatings.length 
-                : 0;
-              return (
-                <View key={dept} style={styles.deptRating}>
-                  <Text style={styles.deptName}>{dept}</Text>
-                  <View style={styles.deptRatingBar}>
-                    <View style={[styles.deptRatingFill, { width: `${(avgRating / 5) * 100}%` }]} />
-                  </View>
-                  <Text style={styles.deptRatingValue}>{avgRating.toFixed(1)}</Text>
-                </View>
-              );
-            })}
-          </Card>
+              {/* Expanded Ratings */}
+              {isSelected && (
+                <Card style={styles.expandedCard}>
+                  <Text style={styles.reviewsTitle}>Student Reviews ({lecturerRatings.length})</Text>
+                  {lecturerRatings.length > 0 ? (
+                    lecturerRatings.map((rating) => (
+                      <RatingCard key={rating.id} rating={rating} />
+                    ))
+                  ) : (
+                    <Text style={styles.noRatings}>No ratings yet for this lecturer</Text>
+                  )}
+                </Card>
+              )}
+            </View>
+          );
+        })}
 
-          {/* Rating Trends */}
-          <Card style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Rating Trends</Text>
-            <View style={styles.trendItem}>
-              <Text style={styles.trendLabel}>Overall Average</Text>
-              <View style={styles.trendBar}>
-                <View style={[styles.trendFill, { width: `${(averages?.overall / 5) * 100}%` }]} />
-              </View>
-              <Text style={styles.trendValue}>{averages?.overall?.toFixed(1)}</Text>
-            </View>
-            <View style={styles.trendItem}>
-              <Text style={styles.trendLabel}>Teaching Quality</Text>
-              <View style={styles.trendBar}>
-                <View style={[styles.trendFill, { width: `${(averages?.teaching / 5) * 100}%` }]} />
-              </View>
-              <Text style={styles.trendValue}>{averages?.teaching?.toFixed(1)}</Text>
-            </View>
-            <View style={styles.trendItem}>
-              <Text style={styles.trendLabel}>Communication</Text>
-              <View style={styles.trendBar}>
-                <View style={[styles.trendFill, { width: `${(averages?.communication / 5) * 100}%` }]} />
-              </View>
-              <Text style={styles.trendValue}>{averages?.communication?.toFixed(1)}</Text>
-            </View>
-            <View style={styles.trendItem}>
-              <Text style={styles.trendLabel}>Punctuality</Text>
-              <View style={styles.trendBar}>
-                <View style={[styles.trendFill, { width: `${(averages?.punctuality / 5) * 100}%` }]} />
-              </View>
-              <Text style={styles.trendValue}>{averages?.punctuality?.toFixed(1)}</Text>
-            </View>
-          </Card>
-
-          {/* Recent Ratings */}
-          <Card style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Recent Ratings</Text>
-            {ratings?.slice(0, 10).map((rating) => (
-              <RatingCard key={rating.id} rating={rating} />
-            ))}
-          </Card>
-        </View>
-      </ScrollView>
+        {lecturers.length === 0 && (
+          <Text style={styles.emptyText}>No lecturers found</Text>
+        )}
+      </View>
     </ScreenContainer>
   );
 }
@@ -181,143 +132,92 @@ const styles = StyleSheet.create({
   container: {
     padding: spacing.md,
   },
-  periodCard: {
-    marginBottom: spacing.md,
-  },
-  periodSelector: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  periodButton: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    borderRadius: 20,
-    backgroundColor: COLORS.surfaceLight,
-  },
-  periodButtonActive: {
-    backgroundColor: COLORS.primary,
-  },
-  periodText: {
-    ...typography.bodySmall,
-    color: COLORS.textSecondary,
-  },
-  periodTextActive: {
-    color: COLORS.buttonPrimaryText,
-  },
-  sectionCard: {
-    marginBottom: spacing.md,
-  },
-  sectionTitle: {
-    ...typography.h4,
+  title: {
+    ...typography.h2,
     color: COLORS.text,
-    marginBottom: spacing.md,
   },
-  rankingItem: {
+  subtitle: {
+    ...typography.body,
+    color: COLORS.textSecondary,
+    marginBottom: spacing.lg,
+  },
+  lecturerItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
-  rankingLeft: {
+  lecturerItemSelected: {
+    backgroundColor: COLORS.primary + '10',
+    borderRadius: 8,
+  },
+  lecturerInfo: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
-  rankingBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: COLORS.surfaceLight,
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.primary + '20',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.sm,
   },
-  topRanking: {
-    backgroundColor: COLORS.primary,
-  },
-  rankingNumber: {
-    ...typography.body,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-  rankingName: {
-    ...typography.body,
-    color: COLORS.text,
-    fontWeight: '500',
-  },
-  rankingDept: {
-    ...typography.caption,
-    color: COLORS.textSecondary,
-    marginTop: 2,
-  },
-  rankingRight: {
-    alignItems: 'flex-end',
-  },
-  rankingScore: {
+  avatarText: {
     ...typography.h4,
     color: COLORS.primary,
   },
-  rankingStars: {
-    flexDirection: 'row',
-    marginTop: 2,
+  lecturerDetails: {
+    flex: 1,
   },
-  deptRating: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  lecturerName: {
+    ...typography.body,
+    color: COLORS.text,
+    fontWeight: '600',
+  },
+  lecturerDept: {
+    ...typography.caption,
+    color: COLORS.textSecondary,
+  },
+  ratingCount: {
+    ...typography.caption,
+    color: COLORS.textDisabled,
+    fontSize: 11,
+  },
+  ratingSection: {
+    alignItems: 'flex-end',
+    marginRight: spacing.sm,
+  },
+  ratingValue: {
+    ...typography.h4,
+    fontWeight: '700',
+  },
+  expandedCard: {
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+  },
+  reviewsTitle: {
+    ...typography.body,
+    color: COLORS.text,
+    fontWeight: '600',
     marginBottom: spacing.md,
   },
-  deptName: {
-    ...typography.bodySmall,
+  noRatings: {
+    ...typography.body,
     color: COLORS.textSecondary,
-    width: 120,
+    textAlign: 'center',
+    padding: spacing.md,
   },
-  deptRatingBar: {
-    flex: 1,
-    height: 6,
-    backgroundColor: COLORS.surfaceLight,
-    borderRadius: 3,
-    marginHorizontal: spacing.sm,
-    overflow: 'hidden',
-  },
-  deptRatingFill: {
-    height: '100%',
-    backgroundColor: COLORS.primary,
-    borderRadius: 3,
-  },
-  deptRatingValue: {
-    ...typography.bodySmall,
-    color: COLORS.text,
-    width: 35,
-    textAlign: 'right',
-  },
-  trendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  trendLabel: {
-    ...typography.bodySmall,
+  emptyText: {
+    ...typography.body,
     color: COLORS.textSecondary,
-    width: 100,
-  },
-  trendBar: {
-    flex: 1,
-    height: 6,
-    backgroundColor: COLORS.surfaceLight,
-    borderRadius: 3,
-    marginHorizontal: spacing.sm,
-    overflow: 'hidden',
-  },
-  trendFill: {
-    height: '100%',
-    backgroundColor: COLORS.primary,
-    borderRadius: 3,
-  },
-  trendValue: {
-    ...typography.bodySmall,
-    color: COLORS.text,
-    width: 35,
-    textAlign: 'right',
+    textAlign: 'center',
+    padding: spacing.xl,
   },
 });

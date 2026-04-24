@@ -8,6 +8,7 @@ import { COLORS, spacing, typography } from '../../config/theme';
 import { fetchDashboardStats } from '../../src/store/monitoringSlice';
 import { fetchCourses } from '../../src/store/courseSlice';
 import { fetchReports } from '../../src/store/monitoringSlice';
+import { fetchLecturers } from '../../src/store/authSlice';
 
 export default function PLDashboard({ navigation }) {
   const dispatch = useDispatch();
@@ -26,6 +27,7 @@ export default function PLDashboard({ navigation }) {
       dispatch(fetchDashboardStats()),
       dispatch(fetchCourses()),
       dispatch(fetchReports()),
+      dispatch(fetchLecturers()),
     ]);
   };
 
@@ -35,9 +37,10 @@ export default function PLDashboard({ navigation }) {
     setRefreshing(false);
   };
 
-  const pendingReports = reports?.filter(r => r.status === 'pending') || [];
-  const totalRatings = stats?.totalRatings || 0;
-  const avgAttendance = stats?.averageAttendance || 0;
+  // Get lecturers from auth state
+  const lecturers = useSelector(state => state.auth?.lecturers || []);
+  const totalLecturers = lecturers.length;
+  const activeCourses = courses?.filter(c => c.isActive !== false).length || 0;
 
   if (isLoading && !refreshing) {
     return <LoadingSpinner fullScreen />;
@@ -54,59 +57,27 @@ export default function PLDashboard({ navigation }) {
         <View style={styles.welcomeSection}>
           <Text style={styles.welcomeText}>Welcome,</Text>
           <Text style={styles.userName}>{user?.name}</Text>
-          <Text style={styles.userRole}>Principal Lecturer</Text>
+          <Text style={styles.userRole}>Program Leader</Text>
           <Text style={styles.department}>{user?.department}</Text>
         </View>
 
         {/* Stats Cards */}
         <View style={styles.statsRow}>
-          <StatsCard
-            title="Total Students"
-            value={stats?.totalStudents || 0}
-            icon="👨‍🎓"
-            trend="up"
-            trendValue="+15%"
-            color={COLORS.primary}
-          />
+       
           <StatsCard
             title="Total Lecturers"
-            value={stats?.totalLecturers || 0}
+            value={totalLecturers}
             icon="👨‍🏫"
-            trend="up"
-            trendValue="+8%"
           />
         </View>
 
         <View style={styles.statsRow}>
           <StatsCard
             title="Active Courses"
-            value={stats?.totalCourses || 0}
+            value={activeCourses}
             icon="📚"
-            trend="up"
-            trendValue="+12%"
           />
-          <StatsCard
-            title="Pending Reports"
-            value={pendingReports.length}
-            icon="📄"
-            color={pendingReports.length > 0 ? COLORS.warning : COLORS.success}
-          />
-        </View>
-
-        <View style={styles.statsRow}>
-          <StatsCard
-            title="Total Ratings"
-            value={totalRatings}
-            icon="⭐"
-            color={COLORS.primary}
-          />
-          <StatsCard
-            title="Avg Attendance"
-            value={`${avgAttendance?.toFixed(1) || 0}%`}
-            icon="📊"
-            trend={avgAttendance >= 75 ? 'up' : 'down'}
-            trendValue="This month"
-          />
+         
         </View>
 
         {/* Quick Actions */}
@@ -135,41 +106,6 @@ export default function PLDashboard({ navigation }) {
             
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => navigation.navigate('Modules')}
-            >
-              <View style={styles.actionIcon}>
-                <Ionicons name="layers-outline" size={28} color={COLORS.primary} />
-              </View>
-              <Text style={styles.actionText}>Manage Modules</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => navigation.navigate('Reports')}
-            >
-              <View style={styles.actionIcon}>
-                <Ionicons name="document-text-outline" size={28} color={COLORS.primary} />
-              </View>
-              <Text style={styles.actionText}>Review Reports</Text>
-              {pendingReports.length > 0 && (
-                <View style={styles.actionBadge}>
-                  <Text style={styles.badgeText}>{pendingReports.length}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => navigation.navigate('Monitoring')}
-            >
-              <View style={styles.actionIcon}>
-                <Ionicons name="analytics-outline" size={28} color={COLORS.primary} />
-              </View>
-              <Text style={styles.actionText}>System Monitoring</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={styles.actionButton}
               onPress={() => navigation.navigate('Ratings')}
             >
               <View style={styles.actionIcon}>
@@ -193,71 +129,10 @@ export default function PLDashboard({ navigation }) {
           </Card>
         )}
 
-        {/* Recent Reports */}
-        <Card style={styles.sectionCard}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.sectionTitle}>Recent Reports</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Reports')}>
-              <Text style={styles.viewAll}>View All</Text>
-            </TouchableOpacity>
-          </View>
-          {reports?.slice(0, 3).map((report) => (
-            <TouchableOpacity
-              key={report.id}
-              style={styles.reportItem}
-              onPress={() => navigation.navigate('ReportDetails', { reportId: report.id })}
-            >
-              <View style={styles.reportInfo}>
-                <Text style={styles.reportTitle}>{report.title}</Text>
-                <Text style={styles.reportMeta}>
-                  {report.submittedBy?.name} • {new Date(report.createdAt).toLocaleDateString()}
-                </Text>
-              </View>
-              <View style={styles.reportStatus}>
-                <View style={[styles.statusDot, { backgroundColor: getStatusColor(report.status) }]} />
-                <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-              </View>
-            </TouchableOpacity>
-          ))}
-        </Card>
-
-        {/* Top Performing Lecturers */}
-        <Card style={styles.sectionCard}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.sectionTitle}>Top Performing Lecturers</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Lecturers')}>
-              <Text style={styles.viewAll}>View All</Text>
-            </TouchableOpacity>
-          </View>
-          {stats?.topLecturers?.slice(0, 3).map((lecturer, index) => (
-            <View key={lecturer.id} style={styles.lecturerItem}>
-              <View style={styles.lecturerRank}>
-                <Text style={styles.rankNumber}>{index + 1}</Text>
-              </View>
-              <View style={styles.lecturerInfo}>
-                <Text style={styles.lecturerName}>{lecturer.name}</Text>
-                <Text style={styles.lecturerDept}>{lecturer.department}</Text>
-              </View>
-              <View style={styles.lecturerRating}>
-                <Ionicons name="star" size={16} color="#FFC107" />
-                <Text style={styles.ratingValue}>{lecturer.rating}</Text>
-              </View>
-            </View>
-          ))}
-        </Card>
       </ScrollView>
     </ScreenContainer>
   );
 }
-
-const getStatusColor = (status) => {
-  switch (status) {
-    case 'pending': return COLORS.warning;
-    case 'approved': return COLORS.success;
-    case 'rejected': return COLORS.error;
-    default: return COLORS.textSecondary;
-  }
-};
 
 const styles = StyleSheet.create({
   welcomeSection: {
@@ -284,11 +159,13 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: spacing.xs,
   },
-  statsRow: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.md,
-  },
+statsRow: {
+  flexDirection: 'row',
+  paddingHorizontal: spacing.md,
+  marginBottom: spacing.md,
+  gap: spacing.sm,
+  flex: 1,
+},
   sectionCard: {
     marginHorizontal: spacing.md,
     marginBottom: spacing.md,

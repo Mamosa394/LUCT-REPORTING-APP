@@ -3,17 +3,18 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
-import { ScreenContainer, LoadingSpinner, AppModal, Input, Button, Card } from '../../src/components/UI';
-import { CourseList, CourseHeader, CourseStats } from '../../src/components/Courses';
+import { ScreenContainer, LoadingSpinner, AppModal, Input, Button } from '../../src/components/UI';
 import { COLORS, spacing, typography } from '../../config/theme';
 import { fetchCourses, createCourse, updateCourse, deleteCourse } from '../../src/store/courseSlice';
-import { fetchLecturers } from '../../src/store/monitoringSlice';
+import { fetchLecturers, selectLecturers } from '../../src/store/authSlice';
 
 export default function PLCourses({ navigation }) {
   const dispatch = useDispatch();
   const { courses, isLoading } = useSelector(state => state.courses);
-  const { lecturers } = useSelector(state => state.monitoring);
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const lecturers = useSelector(selectLecturers);
+  const { user } = useSelector(state => state.auth);
+  
+  const [showModal, setShowModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -23,8 +24,6 @@ export default function PLCourses({ navigation }) {
     year: '',
     credits: '',
     lecturerId: '',
-    description: '',
-    prerequisites: [],
   });
 
   useEffect(() => {
@@ -38,46 +37,6 @@ export default function PLCourses({ navigation }) {
     ]);
   };
 
-  const handleCreateCourse = async () => {
-    if (!formData.name || !formData.code) {
-      Alert.alert('Error', 'Please fill in all required fields');
-      return;
-    }
-    
-    await dispatch(createCourse(formData));
-    setShowCreateModal(false);
-    resetForm();
-    loadData();
-    Alert.alert('Success', 'Course created successfully');
-  };
-
-  const handleUpdateCourse = async () => {
-    await dispatch(updateCourse({ id: editingCourse.id, data: formData }));
-    setEditingCourse(null);
-    resetForm();
-    loadData();
-    Alert.alert('Success', 'Course updated successfully');
-  };
-
-  const handleDeleteCourse = (course) => {
-    Alert.alert(
-      'Delete Course',
-      `Are you sure you want to delete ${course.name}? This action cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            await dispatch(deleteCourse(course.id));
-            loadData();
-            Alert.alert('Success', 'Course deleted successfully');
-          },
-        },
-      ]
-    );
-  };
-
   const resetForm = () => {
     setFormData({
       name: '',
@@ -87,70 +46,124 @@ export default function PLCourses({ navigation }) {
       year: '',
       credits: '',
       lecturerId: '',
-      description: '',
-      prerequisites: [],
     });
   };
 
-  const editCourse = (course) => {
+  const openCreateModal = () => {
+    resetForm();
+    setEditingCourse(null);
+    setShowModal(true);
+  };
+
+  const openEditModal = (course) => {
     setEditingCourse(course);
     setFormData({
-      name: course.name,
-      code: course.code,
-      department: course.department,
-      semester: course.semester,
-      year: course.year,
-      credits: course.credits?.toString(),
-      lecturerId: course.lecturerId,
-      description: course.description || '',
-      prerequisites: course.prerequisites || [],
+      name: course.name || '',
+      code: course.code || '',
+      department: course.department || '',
+      semester: course.semester || '',
+      year: course.year || '',
+      credits: course.credits?.toString() || '',
+      lecturerId: course.lecturerId || '',
     });
+    setShowModal(true);
   };
 
-  const courseStats = {
-    total: courses?.length || 0,
-    active: courses?.filter(c => c.isActive !== false).length || 0,
-    completed: courses?.filter(c => c.status === 'completed').length || 0,
+  const handleSubmit = async () => {
+    if (!formData.name || !formData.code) {
+      Alert.alert('Error', 'Course name and code are required');
+      return;
+    }
+
+    const selectedLecturer = lecturers.find(l => l.id === formData.lecturerId);
+    
+    const courseData = {
+      ...formData,
+      code: formData.code.toUpperCase(),
+      credits: parseInt(formData.credits) || 0,
+      lecturerName: selectedLecturer?.name || '',
+      lecturerEmail: selectedLecturer?.email || '',
+      employeeId: selectedLecturer?.employeeId || '',
+      stream: user?.stream || '',
+      createdBy: user?.uid || user?.id || '',
+    };
+
+    if (editingCourse) {
+      await dispatch(updateCourse({ id: editingCourse.id, data: courseData }));
+    } else {
+      await dispatch(createCourse(courseData));
+    }
+
+    setShowModal(false);
+    resetForm();
+    loadData();
   };
 
-  if (isLoading && !courses) {
+  const handleDeleteCourse = (course) => {
+    Alert.alert(
+      'Delete Course',
+      `Delete ${course.name}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await dispatch(deleteCourse(course.id));
+            loadData();
+          },
+        },
+      ]
+    );
+  };
+
+  if (isLoading && courses.length === 0) {
     return <LoadingSpinner fullScreen />;
   }
 
   return (
-    <ScreenContainer scrollable={false}>
-      <CourseHeader
-        title="Manage Courses"
-        onSearchPress={() => navigation.navigate('SearchCourses')}
-        onFilterPress={() => {}}
-      />
-      
-      <CourseStats stats={courseStats} />
-      
-      <View style={styles.addButtonContainer}>
+    <ScreenContainer scrollable={true}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Manage Courses</Text>
+          <Text style={styles.subtitle}>{courses.length} courses</Text>
+        </View>
+
         <Button
           title="+ Add New Course"
-          onPress={() => setShowCreateModal(true)}
+          onPress={openCreateModal}
           style={styles.addButton}
         />
-      </View>
-      
-      <CourseList
-        courses={courses}
-        onCoursePress={(course) => navigation.navigate('CourseDetails', { courseId: course.id })}
-        onEdit={editCourse}
-        onDelete={handleDeleteCourse}
-        showActions={true}
-      />
 
-      {/* Create/Edit Modal */}
+        <ScrollView style={styles.courseList}>
+          {courses.map((course) => (
+            <View key={course.id} style={styles.courseCard}>
+              <View style={styles.courseInfo}>
+                <Text style={styles.courseName}>{course.name}</Text>
+                <Text style={styles.courseCode}>{course.code}</Text>
+                <Text style={styles.courseDetails}>
+                  Semester {course.semester || 'N/A'} • {course.credits || 0} credits
+                </Text>
+                <Text style={styles.lecturerText}>
+                  Lecturer: {course.lecturerName || 'Unassigned'}
+                </Text>
+              </View>
+              <View style={styles.courseActions}>
+                <TouchableOpacity onPress={() => openEditModal(course)} style={styles.actionBtn}>
+                  <Ionicons name="create-outline" size={20} color={COLORS.primary} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => handleDeleteCourse(course)} style={styles.actionBtn}>
+                  <Ionicons name="trash-outline" size={20} color={COLORS.error} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+
       <AppModal
-        visible={showCreateModal || !!editingCourse}
-        onClose={() => {
-          setShowCreateModal(false);
-          setEditingCourse(null);
-          resetForm();
-        }}
+        visible={showModal}
+        onClose={() => setShowModal(false)}
         title={editingCourse ? 'Edit Course' : 'Create New Course'}
       >
         <ScrollView showsVerticalScrollIndicator={false}>
@@ -180,15 +193,14 @@ export default function PLCourses({ navigation }) {
               label="Semester"
               value={formData.semester}
               onChangeText={(text) => setFormData({ ...formData, semester: text })}
-              placeholder="e.g., 1"
+              placeholder="1"
               style={styles.halfInput}
             />
-            
             <Input
               label="Year"
               value={formData.year}
               onChangeText={(text) => setFormData({ ...formData, year: text })}
-              placeholder="e.g., 2024"
+              placeholder="2024"
               style={styles.halfInput}
             />
           </View>
@@ -197,71 +209,38 @@ export default function PLCourses({ navigation }) {
             label="Credits"
             value={formData.credits}
             onChangeText={(text) => setFormData({ ...formData, credits: text })}
-            placeholder="e.g., 3"
+            placeholder="3"
             keyboardType="numeric"
           />
           
-          <Input
-            label="Description"
-            value={formData.description}
-            onChangeText={(text) => setFormData({ ...formData, description: text })}
-            placeholder="Course description..."
-            multiline
-            numberOfLines={4}
-          />
-          
-          <View style={styles.lecturerSection}>
-            <Text style={styles.label}>Assign Lecturer</Text>
-            <ScrollView style={styles.lecturerList} showsVerticalScrollIndicator={false}>
-              {lecturers?.map((lecturer) => (
-                <TouchableOpacity
-                  key={lecturer.id}
-                  style={[
-                    styles.lecturerOption,
-                    formData.lecturerId === lecturer.id && styles.lecturerOptionSelected,
-                  ]}
-                  onPress={() => setFormData({ ...formData, lecturerId: lecturer.id })}
-                >
-                  <View style={styles.lecturerOptionContent}>
-                    <View style={styles.lecturerOptionAvatar}>
-                      <Text style={styles.lecturerOptionInitial}>
-                        {lecturer.name?.charAt(0)}
-                      </Text>
-                    </View>
-                    <View>
-                      <Text style={[
-                        styles.lecturerOptionName,
-                        formData.lecturerId === lecturer.id && styles.lecturerOptionNameSelected,
-                      ]}>
-                        {lecturer.name}
-                      </Text>
-                      <Text style={styles.lecturerOptionDept}>{lecturer.department}</Text>
-                    </View>
+          <Text style={styles.label}>Assign Lecturer</Text>
+          <ScrollView style={styles.lecturerList}>
+            {lecturers.map((lecturer) => (
+              <TouchableOpacity
+                key={lecturer.id}
+                style={[
+                  styles.lecturerOption,
+                  formData.lecturerId === lecturer.id && styles.lecturerOptionSelected,
+                ]}
+                onPress={() => setFormData({ ...formData, lecturerId: lecturer.id })}
+              >
+                <View style={styles.lecturerInfo}>
+                  <Ionicons name="person-circle-outline" size={24} color={COLORS.textSecondary} />
+                  <View>
+                    <Text style={styles.lecturerName}>{lecturer.name}</Text>
+                    <Text style={styles.lecturerDept}>{lecturer.department || lecturer.faculty}</Text>
                   </View>
-                  {formData.lecturerId === lecturer.id && (
-                    <Ionicons name="checkmark-circle" size={24} color={COLORS.success} />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
+                </View>
+                {formData.lecturerId === lecturer.id && (
+                  <Ionicons name="checkmark-circle" size={24} color={COLORS.primary} />
+                )}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
           
           <View style={styles.modalButtons}>
-            <Button
-              title="Cancel"
-              variant="secondary"
-              onPress={() => {
-                setShowCreateModal(false);
-                setEditingCourse(null);
-                resetForm();
-              }}
-              style={styles.modalButton}
-            />
-            <Button
-              title={editingCourse ? 'Update' : 'Create'}
-              onPress={editingCourse ? handleUpdateCourse : handleCreateCourse}
-              style={styles.modalButton}
-            />
+            <Button title="Cancel" variant="secondary" onPress={() => setShowModal(false)} style={{ flex: 1, marginRight: spacing.xs }} />
+            <Button title={editingCourse ? 'Update' : 'Create'} onPress={handleSubmit} style={{ flex: 1, marginLeft: spacing.xs }} />
           </View>
         </ScrollView>
       </AppModal>
@@ -270,40 +249,90 @@ export default function PLCourses({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  addButtonContainer: {
-    paddingHorizontal: spacing.md,
-    marginVertical: spacing.md,
+  container: {
+    padding: spacing.md,
+  },
+  header: {
+    marginBottom: spacing.md,
+  },
+  title: {
+    ...typography.h2,
+    color: COLORS.text,
+  },
+  subtitle: {
+    ...typography.body,
+    color: COLORS.textSecondary,
   },
   addButton: {
-    width: '100%',
+    marginBottom: spacing.md,
+  },
+  courseList: {
+    flex: 1,
+  },
+  courseCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: COLORS.cardBackground,
+    borderRadius: 12,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  courseInfo: {
+    flex: 1,
+  },
+  courseName: {
+    ...typography.body,
+    color: COLORS.text,
+    fontWeight: '600',
+  },
+  courseCode: {
+    ...typography.caption,
+    color: COLORS.primary,
+  },
+  courseDetails: {
+    ...typography.caption,
+    color: COLORS.textSecondary,
+  },
+  lecturerText: {
+    ...typography.caption,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  courseActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  actionBtn: {
+    padding: spacing.xs,
   },
   row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
   },
   halfInput: {
     flex: 1,
     marginRight: spacing.sm,
   },
-  lecturerSection: {
-    marginVertical: spacing.md,
-  },
   label: {
     ...typography.body,
     color: COLORS.textSecondary,
     marginBottom: spacing.sm,
+    marginTop: spacing.md,
+    fontWeight: '600',
   },
   lecturerList: {
-    maxHeight: 300,
+    maxHeight: 250,
   },
   lecturerOption: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.md,
+    padding: spacing.sm,
     backgroundColor: COLORS.surfaceLight,
     borderRadius: 8,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
@@ -311,45 +340,23 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary + '20',
     borderColor: COLORS.primary,
   },
-  lecturerOptionContent: {
+  lecturerInfo: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.sm,
   },
-  lecturerOptionAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.sm,
-  },
-  lecturerOptionInitial: {
-    color: COLORS.buttonPrimaryText,
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  lecturerOptionName: {
+  lecturerName: {
     ...typography.body,
     color: COLORS.text,
-    fontWeight: '600',
+    fontWeight: '500',
   },
-  lecturerOptionNameSelected: {
-    color: COLORS.primary,
-  },
-  lecturerOptionDept: {
+  lecturerDept: {
     ...typography.caption,
     color: COLORS.textSecondary,
-    marginTop: spacing.xs,
   },
   modalButtons: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     marginTop: spacing.lg,
     marginBottom: spacing.md,
-  },
-  modalButton: {
-    flex: 1,
-    marginHorizontal: spacing.xs,
   },
 });
