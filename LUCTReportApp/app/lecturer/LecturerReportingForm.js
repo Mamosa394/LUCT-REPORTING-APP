@@ -1,4 +1,4 @@
-// app/lecturer/LecturerReportingForm.js
+// LecturerReportingForm
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -160,8 +160,6 @@ export default function LecturerReportingForm({ navigation, route }) {
   if (isLoading) {
     return <LoadingSpinner fullScreen />;
   }
-
-  // ✅ REPLACED ScreenContainer with SafeAreaView + View
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
@@ -170,7 +168,6 @@ export default function LecturerReportingForm({ navigation, route }) {
         style={styles.container}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        {/* ✅ Single ScrollView - no nesting issues */}
         <ScrollView 
           showsVerticalScrollIndicator={true}
           contentContainerStyle={styles.scrollContent}
@@ -220,21 +217,21 @@ export default function LecturerReportingForm({ navigation, route }) {
               label="Class Name *"
               value={formData.className}
               onChangeText={(text) => setFormData({...formData, className: text})}
-              placeholder="e.g., CS2023A"
+              placeholder="e.g., MDP0000"
             />
             
             <Input
               label="Course Name *"
               value={formData.courseName}
               onChangeText={(text) => setFormData({...formData, courseName: text})}
-              placeholder="e.g., Mobile Application Development"
+              placeholder="e.g., Software Engineering"
             />
             
             <Input
               label="Course Code *"
               value={formData.courseCode}
               onChangeText={(text) => setFormData({...formData, courseCode: text})}
-              placeholder="e.g., CS401"
+              placeholder="e.g., MDP0000"
             />
             
             <Input
@@ -287,7 +284,7 @@ export default function LecturerReportingForm({ navigation, route }) {
               label="Venue of the Class *"
               value={formData.venue}
               onChangeText={(text) => setFormData({...formData, venue: text})}
-              placeholder="e.g., Room 301, Main Building"
+              placeholder="Room 1"
             />
           </Card>
 

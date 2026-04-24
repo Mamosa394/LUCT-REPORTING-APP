@@ -1,4 +1,4 @@
-// app/lecturer/Reports.js
+// lecturer Reports
 import React, { useEffect, useState } from 'react';
 import { 
   View, Text, StyleSheet, TouchableOpacity, Alert, FlatList, 
@@ -131,7 +131,6 @@ export default function LecturerReports({ navigation }) {
     </TouchableOpacity>
   );
 
-  // ✅ FIXED: Render report details with null check
   const renderReportDetails = () => {
     if (!selectedReport) return null;
     

@@ -1,4 +1,4 @@
-// app/lecturer/Attendance.js - Updated to properly access state
+//lectuere attendance
 
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
@@ -36,17 +36,14 @@ export default function LecturerAttendance({ navigation, route }) {
   };
 
   const handleCourseSelect = async (course) => {
-    console.log('📚 Selected course:', course.id, course.name);
     setSelectedCourse(course);
     
     // Fetch students from attendance records
     const studentsResult = await dispatch(fetchStudentsByCourse(course.id)).unwrap();
-    console.log('📚 Students result:', studentsResult);
     
     // Fetch today's attendance
     const today = new Date().toISOString().split('T')[0];
     const attendanceResult = await dispatch(fetchAttendanceByCourse({ courseId: course.id, date: today })).unwrap();
-    console.log('📚 Attendance result:', attendanceResult);
     
     // Build student attendance map from the result
     const records = attendanceResult?.records || [];
@@ -56,7 +53,6 @@ export default function LecturerAttendance({ navigation, route }) {
     });
     
     setStudentAttendance(attendanceMap);
-    console.log('📚 Attendance map:', attendanceMap);
   };
 
   const getStatusColor = (status) => {
@@ -81,12 +77,10 @@ export default function LecturerAttendance({ navigation, route }) {
 
   const myCourses = courses || [];
   
-  // ✅ Get students directly from state
   const courseStudents = selectedCourse 
     ? (attendanceState?.courseStudents?.[selectedCourse.id] || [])
     : [];
   
-  console.log('📚 Course students from state:', courseStudents.length);
 
   // Calculate attendance summary
   const totalStudents = courseStudents.length;

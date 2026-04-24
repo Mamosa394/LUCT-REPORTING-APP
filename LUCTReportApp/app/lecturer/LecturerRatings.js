@@ -1,4 +1,4 @@
-// app/lecturer/Ratings.js
+// lecturer Ratings
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';

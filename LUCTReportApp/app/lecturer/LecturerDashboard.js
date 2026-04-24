@@ -1,4 +1,4 @@
-// app/lecturer/Dashboard.js - Updated version
+// lecturer dashboard
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
@@ -35,7 +35,6 @@ export default function LecturerDashboard({ navigation }) {
         dispatch(fetchReports({ lecturerId: lecturerId })),
       ]);
     } catch (error) {
-      console.error('Error loading dashboard:', error);
     }
   };
 
@@ -61,8 +60,7 @@ export default function LecturerDashboard({ navigation }) {
   // Calculate total number of courses assigned
   const totalAssignedCourses = totalCourses || myCourses.length;
 
-  // ✅ Calculate total students from REPORTS
-  // Get unique total per course (more accurate - avoids double counting)
+  // Get unique total per course 
   const getUniqueCourseStudents = () => {
     const courseMap = new Map();
     
@@ -96,9 +94,6 @@ export default function LecturerDashboard({ navigation }) {
       return created >= weekAgo;
     }).length,
   };
-
-  // Get pending reports
-  const pendingReports = myReports.filter(r => r.status?.toLowerCase() === 'pending');
   
   // Get recent reports
   const recentReports = [...myReports]
@@ -125,7 +120,7 @@ export default function LecturerDashboard({ navigation }) {
           <Text style={styles.department}>{user?.department || user?.faculty || 'Faculty'}</Text>
         </View>
 
-        {/* Stats Cards - Now showing Total Courses instead of Rating */}
+        {/* Stats Cards  */}
         <View style={styles.statsRow}>
           <StatsCard
             title="Total Courses"
@@ -202,33 +197,6 @@ export default function LecturerDashboard({ navigation }) {
             </View>
           )}
         </Card>
-
-        {/* Pending Reports Alert */}
-        {pendingReports.length > 0 && (
-          <Card style={[styles.sectionCard, styles.pendingCard]}>
-            <View style={styles.cardHeader}>
-              <View style={styles.pendingHeader}>
-                <Ionicons name="time-outline" size={20} color={COLORS.warning} />
-                <Text style={[styles.sectionTitle, { marginLeft: spacing.xs }]}>
-                  Pending Review ({pendingReports.length})
-                </Text>
-              </View>
-              <TouchableOpacity onPress={() => navigation.navigate('LecturerReports')}>
-                <Text style={styles.viewAll}>View</Text>
-              </TouchableOpacity>
-            </View>
-            {pendingReports.slice(0, 2).map((report) => (
-              <View key={report.id} style={styles.pendingItem}>
-                <Text style={styles.pendingTitle}>
-                  {report.courseCode} - Week {report.weekOfReporting}
-                </Text>
-                <Text style={styles.pendingDate}>
-                  Submitted: {new Date(report.createdAt).toLocaleDateString()}
-                </Text>
-              </View>
-            ))}
-          </Card>
-        )}
 
         {/* My Courses */}
         <Card style={[styles.sectionCard, styles.lastCard]}>

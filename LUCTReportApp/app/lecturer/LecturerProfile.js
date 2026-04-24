@@ -1,4 +1,4 @@
-// app/lecturer/Profile.js
+// lecturer Profile
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
@@ -10,7 +10,6 @@ import { logout } from '../../src/store/authSlice';
 export default function LecturerProfile({ navigation }) {
   const dispatch = useDispatch();
   const { user, isLoading } = useSelector(state => state.auth);
-  const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
@@ -21,12 +20,6 @@ export default function LecturerProfile({ navigation }) {
     office: user?.office || '',
     specialization: user?.specialization || '',
   });
-
-  const handleUpdate = async () => {
-    // Update profile logic
-    Alert.alert('Success', 'Profile updated successfully');
-    setIsEditing(false);
-  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -69,49 +62,29 @@ export default function LecturerProfile({ navigation }) {
             label="Full Name"
             value={formData.name}
             onChangeText={(text) => setFormData({ ...formData, name: text })}
-            editable={isEditing}
           />
           
           <Input
             label="Email"
             value={formData.email}
             onChangeText={(text) => setFormData({ ...formData, email: text })}
-            editable={isEditing}
             keyboardType="email-address"
           />
           
           <Input
             label="Employee ID"
             value={formData.employeeId}
-            editable={false}
           />
           
           <Input
             label="Department"
             value={formData.department}
-            editable={false}
           />
           
           <Input
             label="Position"
             value={formData.position}
-            editable={false}
           />          
-          {isEditing && (
-            <View style={styles.buttonRow}>
-              <Button
-                title="Cancel"
-                variant="secondary"
-                onPress={() => setIsEditing(false)}
-                style={styles.button}
-              />
-              <Button
-                title="Save Changes"
-                onPress={handleUpdate}
-                style={styles.button}
-              />
-            </View>
-          )}
         </Card>       
         
         {/* Logout Button */}

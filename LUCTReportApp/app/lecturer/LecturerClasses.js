@@ -1,4 +1,4 @@
-// app/lecturer/Classes.js - Complete fixed version
+// lectuere classes
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { 
   View, 
@@ -15,6 +15,8 @@ import { ScreenContainer, LoadingSpinner, Card } from '../../src/components/UI';
 import { COLORS, spacing, typography } from '../../config/theme';
 import { fetchCoursesByLecturer, fetchCourses } from '../../src/store/courseSlice';
 import { fetchAttendanceByCourse } from '../../src/store/attendanceSlice';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../../config/firebase';
 
 export default function LecturerClasses({ navigation }) {
   const dispatch = useDispatch();
@@ -25,66 +27,60 @@ export default function LecturerClasses({ navigation }) {
   const [todayAttendance, setTodayAttendance] = useState({});
   const [refreshing, setRefreshing] = useState(false);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
+  const [studentCounts, setStudentCounts] = useState({});
 
-  // Get the correct lecturer identifier
   const lecturerId = user?.employeeId || user?.id || user?.uid;
-  
-  console.log('🔑 Lecturer ID:', lecturerId);
+
+  const fetchStudentCounts = async (coursesList) => {
+    const counts = {};
+    for (const course of coursesList) {
+      try {
+        const attendanceRef = collection(db, 'attendance');
+        const q = query(attendanceRef, where('courseId', '==', course.id));
+        const snapshot = await getDocs(q);
+        const uniqueStudents = new Set();
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          if (data.studentId) uniqueStudents.add(data.studentId);
+        });
+        counts[course.id] = uniqueStudents.size;
+      } catch (error) {
+        counts[course.id] = 0;
+      }
+    }
+    setStudentCounts(counts);
+  };
 
   const loadCourses = async () => {
-    if (!lecturerId) {
-      console.error('❌ Cannot load courses: No lecturer ID');
-      return;
-    }
+    if (!lecturerId) return;
     
     try {
-      console.log('📚 Loading courses for lecturer:', lecturerId);
-      
-      // Try to fetch courses by lecturer first
       const result = await dispatch(fetchCoursesByLecturer(lecturerId)).unwrap();
-      console.log(`✅ Loaded ${result.courses?.length || 0} courses`);
       
-      // If no courses found with the thunk, try fetching all and filtering
       if (!result.courses || result.courses.length === 0) {
-        console.log('📚 No courses found with lecturer filter, trying all courses...');
         const allResult = await dispatch(fetchCourses({})).unwrap();
-        
-        // Filter locally for this lecturer
         const filteredCourses = allResult.courses?.filter(course => {
           return course.lecturerId === lecturerId ||
                  course.employeeId === lecturerId ||
                  course.assignedLecturerId === lecturerId ||
                  course.lecturerEmployeeId === lecturerId;
         }) || [];
-        
-        console.log(`📚 Found ${filteredCourses.length} courses after local filtering`);
-        
-        // If we found courses locally, we might want to store them
-        if (filteredCourses.length > 0) {
-          // You could dispatch an action to set these courses in state
-          // For now, we'll just log them
-          filteredCourses.forEach(course => {
-            console.log(`  - ${course.code}: ${course.name} (lecturerId: ${course.lecturerId})`);
-          });
-        }
+        await fetchStudentCounts(filteredCourses);
+      } else {
+        await fetchStudentCounts(result.courses);
       }
       
       setInitialLoadDone(true);
     } catch (error) {
-      console.error('❌ Error loading courses:', error);
-      
-      // Fallback: Try to fetch all courses without filter
       try {
-        console.log('📚 Fallback: Fetching all courses...');
         const fallbackResult = await dispatch(fetchCourses({})).unwrap();
         const filtered = fallbackResult.courses?.filter(course => {
           return course.lecturerId === lecturerId ||
                  course.employeeId === lecturerId ||
                  course.assignedLecturerId === lecturerId;
         }) || [];
-        console.log(`📚 Fallback found ${filtered.length} courses`);
+        await fetchStudentCounts(filtered);
       } catch (fallbackError) {
-        console.error('❌ Fallback failed:', fallbackError);
         Alert.alert('Error', 'Failed to load courses. Please try again.');
       } finally {
         setInitialLoadDone(true);
@@ -95,8 +91,6 @@ export default function LecturerClasses({ navigation }) {
   useEffect(() => {
     if (lecturerId) {
       loadCourses();
-    } else {
-      console.warn('⚠️ No lecturer ID available');
     }
   }, [lecturerId]);
 
@@ -109,11 +103,9 @@ export default function LecturerClasses({ navigation }) {
   const handleCourseSelect = async (course) => {
     setSelectedCourse(course);
     
-    // Fetch attendance for this course
     try {
       await dispatch(fetchAttendanceByCourse({ courseId: course.id })).unwrap();
       
-      // Check if attendance already marked for today
       const today = new Date().toISOString().split('T')[0];
       const todayRecord = attendanceRecords?.find(r => {
         const recordDate = r.date?.split('T')[0] || r.createdAt?.split('T')[0];
@@ -125,7 +117,6 @@ export default function LecturerClasses({ navigation }) {
         [course.id]: todayRecord
       }));
     } catch (error) {
-      console.error('Error fetching attendance:', error);
     }
   };
 
@@ -136,39 +127,24 @@ export default function LecturerClasses({ navigation }) {
     });
   };
 
-  // Get student count for each course
   const getStudentCount = (course) => {
-    if (course.students && Array.isArray(course.students)) {
-      return course.students.length;
-    }
-    if (course.studentCount) {
-      return course.studentCount;
-    }
-    if (course.totalStudents) {
-      return course.totalStudents;
-    }
-    return 0;
+    return studentCounts[course.id] || 0;
   };
 
-  // Check if attendance is marked for today
   const isAttendanceMarkedToday = (courseId) => {
     return !!todayAttendance[courseId];
   };
 
-  // Only show loading spinner on initial load when no courses exist
   if (coursesLoading && !initialLoadDone && courses.length === 0) {
     return <LoadingSpinner fullScreen text="Loading your classes..." />;
   }
 
-  // Filter courses to ensure we only show the lecturer's courses
   const myCourses = courses.filter(course => {
     return course.lecturerId === lecturerId ||
            course.employeeId === lecturerId ||
            course.assignedLecturerId === lecturerId ||
            course.lecturerEmployeeId === lecturerId;
   });
-
-  console.log(`📊 Displaying ${myCourses.length} courses for lecturer ${lecturerId}`);
 
   return (
     <ScreenContainer>
@@ -190,7 +166,6 @@ export default function LecturerClasses({ navigation }) {
             </Text>
           </View>
 
-          {/* Course List */}
           {myCourses.map((course) => (
             <Card 
               key={course.id} 
@@ -216,8 +191,6 @@ export default function LecturerClasses({ navigation }) {
                   </View>
                 </View>
                 <View style={styles.courseDetails}>
-                  <View style={styles.detailItem}>
-                  </View>
                   {course.department && (
                     <View style={styles.detailItem}>
                       <Ionicons name="business-outline" size={16} color={COLORS.primary} />
@@ -234,22 +207,7 @@ export default function LecturerClasses({ navigation }) {
                       </Text>
                     </View>
                   )}
-                </View>
-
-                {isAttendanceMarkedToday(course.id) && (
-                  <View style={styles.attendanceStatus}>
-                    <Ionicons name="checkmark-circle" size={16} color={COLORS.success} />
-                    <Text style={styles.attendanceText}>
-                      Attendance marked for today
-                    </Text>
-                    <TouchableOpacity 
-                      onPress={() => handleViewAttendance(course)}
-                      style={styles.viewLink}
-                    >
-                      <Text style={styles.viewLinkText}>View</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}                
+                </View>              
               </TouchableOpacity>
             </Card>
           ))}
