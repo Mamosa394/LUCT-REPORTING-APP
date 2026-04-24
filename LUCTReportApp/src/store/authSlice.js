@@ -143,6 +143,20 @@ export const fetchLecturers = createAsyncThunk(
   }
 );
 
+export const fetchStudentsCount = createAsyncThunk(
+  'auth/fetchStudentsCount',
+  async (_, { rejectWithValue }) => {
+    try {
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('role', '==', 'student'));
+      const snapshot = await getDocs(q);
+      return snapshot.size;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 // Async thunks
 export const login = createAsyncThunk(
   'auth/login',

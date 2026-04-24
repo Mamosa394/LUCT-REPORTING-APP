@@ -1,4 +1,4 @@
-// app/prl/Ratings.js
+//principal lecturer ratings
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
@@ -26,7 +26,7 @@ export default function PRLRatings({ navigation }) {
     try {
       await Promise.all([
         dispatch(fetchLecturers()),
-        dispatch(fetchRatings()), // Fetch all ratings for PRL view
+        dispatch(fetchRatings()), 
       ]);
     } catch (error) {
       console.error('Error loading ratings data:', error);
@@ -79,36 +79,6 @@ export default function PRLRatings({ navigation }) {
     });
     
     return count > 0 ? (totalRating / count).toFixed(1) : 0;
-  };
-
-  // Calculate aspect averages for a lecturer
-  const calculateLecturerAverages = (lecturerId) => {
-    const lecturerRatingsList = getLecturerRatings(lecturerId);
-    if (!lecturerRatingsList.length) return null;
-    
-    const aspects = ['teachingQuality', 'communication', 'punctuality', 'material', 'support', 'overall'];
-    const sums = {};
-    aspects.forEach(aspect => { sums[aspect] = 0; });
-    
-    let count = 0;
-    
-    lecturerRatingsList.forEach(rating => {
-      if (rating.aspects) {
-        aspects.forEach(aspect => {
-          sums[aspect] += rating.aspects[aspect] || 0;
-        });
-        count++;
-      }
-    });
-    
-    if (count === 0) return null;
-    
-    const averages = {};
-    aspects.forEach(aspect => {
-      averages[aspect] = sums[aspect] / count;
-    });
-    
-    return averages;
   };
 
   // Get total ratings count for a lecturer

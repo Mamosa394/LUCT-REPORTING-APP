@@ -1,4 +1,4 @@
-// app/pl/Lecturers.js
+//program leader lecturers
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';

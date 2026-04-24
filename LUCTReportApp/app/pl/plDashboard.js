@@ -1,4 +1,4 @@
-// app/pl/Dashboard.js
+//program leader dashboard
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
@@ -31,7 +31,7 @@ export default function PLDashboard({ navigation }) {
     ]);
   };
 
-  const onRefresh = async () => {
+  const onRefresh = async () => {    //function to refresh dashboard
     setRefreshing(true);
     await loadDashboardData();
     setRefreshing(false);
@@ -49,11 +49,11 @@ export default function PLDashboard({ navigation }) {
   return (
     <ScreenContainer scrollable={true}>
       <ScrollView
-        refreshControl={
+        refreshControl={         //function called to refresh the dashbourd for new updates
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />
         }
       >
-        {/* Welcome Section */}
+      {/* Welcome section on top */}
         <View style={styles.welcomeSection}>
           <Text style={styles.welcomeText}>Welcome,</Text>
           <Text style={styles.userName}>{user?.name}</Text>
@@ -61,26 +61,21 @@ export default function PLDashboard({ navigation }) {
           <Text style={styles.department}>{user?.department}</Text>
         </View>
 
-        {/* Stats Cards */}
+       {/* Stats card top */}
         <View style={styles.statsRow}>
-       
           <StatsCard
             title="Total Lecturers"
             value={totalLecturers}
-            icon="👨‍🏫"
+            icon={<Ionicons name="people-outline" size={24} color={COLORS.success} />}
           />
-        </View>
-
-        <View style={styles.statsRow}>
           <StatsCard
             title="Active Courses"
             value={activeCourses}
-            icon="📚"
-          />
-         
+            icon={<Ionicons name="library-outline" size={24} color={COLORS.primary} />}
+          />   
         </View>
 
-        {/* Quick Actions */}
+      {/* Quick actions */}
         <Card style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.quickActionsGrid}>
@@ -115,19 +110,6 @@ export default function PLDashboard({ navigation }) {
             </TouchableOpacity>
           </View>
         </Card>
-
-        {/* System Alerts */}
-        {stats?.systemAlerts?.length > 0 && (
-          <Card style={styles.alertsCard}>
-            <Text style={styles.sectionTitle}>System Alerts</Text>
-            {stats.systemAlerts.map((alert, index) => (
-              <View key={index} style={styles.alertItem}>
-                <Ionicons name="warning-outline" size={20} color={COLORS.warning} />
-                <Text style={styles.alertText}>{alert.message}</Text>
-              </View>
-            ))}
-          </Card>
-        )}
 
       </ScrollView>
     </ScreenContainer>

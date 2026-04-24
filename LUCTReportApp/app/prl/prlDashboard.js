@@ -1,3 +1,4 @@
+//principal lecturer dashboard
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
 import { useSelector } from 'react-redux';
@@ -19,10 +20,9 @@ export default function PRLDashboard({ navigation }) {
   });
   const [recentReports, setRecentReports] = useState([]);
 
-  // Refresh when screen comes into focus (after returning from report detail)
+  // Refresh when screen comes into focus after returning from report detail
   useFocusEffect(
     useCallback(() => {
-      console.log('🔄 Dashboard focused - refreshing data');
       loadDashboardData();
       return () => {};
     }, [])
@@ -35,7 +35,6 @@ export default function PRLDashboard({ navigation }) {
   const loadDashboardData = async () => {
     try {
       setIsLoading(true);
-      console.log('📊 Loading dashboard data...');
       
       // Fetching stats in parallel for speed
       const [sSnap, lSnap, pSnap] = await Promise.all([
@@ -43,9 +42,6 @@ export default function PRLDashboard({ navigation }) {
         getCountFromServer(query(collection(db, 'users'), where('role', '==', 'lecturer'))),
         getCountFromServer(query(collection(db, 'reports'), where('status', 'in', ['pending', 'submitted'])))
       ]);
-
-      console.log(`📊 Stats - Students: ${sSnap.data().count}, Lecturers: ${lSnap.data().count}, Pending Reports: ${pSnap.data().count}`);
-
       const qRecent = query(
         collection(db, 'reports'),
         where('status', 'in', ['pending', 'submitted'])
@@ -57,8 +53,6 @@ export default function PRLDashboard({ navigation }) {
         createdAt: doc.data().createdAt?.toDate?.() || new Date()
       })).sort((a, b) => b.createdAt - a.createdAt).slice(0, 5);
 
-      console.log(`📋 Found ${reports.length} recent pending reports`);
-
       setStats({
         totalStudents: sSnap.data().count,
         totalLecturers: lSnap.data().count,
@@ -66,14 +60,13 @@ export default function PRLDashboard({ navigation }) {
       });
       setRecentReports(reports);
     } catch (error) {
-      console.error('❌ [PRLDashboard] Error:', error);
+      console.error(' [PRLDashboard] Error:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleReportPress = (report) => {
-    console.log('🚀 [Dashboard] Navigating to PrlReports with ID:', report.id);
     navigation.navigate('PrlReports', { 
       reportId: report.id 
     });

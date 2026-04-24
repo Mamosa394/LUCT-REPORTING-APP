@@ -1,4 +1,4 @@
-// app/pl/Ratings.js
+//program leader ratings
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
@@ -72,7 +72,7 @@ export default function PLRatings({ navigation }) {
         <Text style={styles.title}>Lecturer Ratings</Text>
         <Text style={styles.subtitle}>See how students rated your lecturers</Text>
 
-        {/* Lecturer List */}
+        {/* rated Lecturer List */}
         {lecturers.map((lecturer) => {
           const avg = getLecturerAverage(lecturer.id);
           const count = getLecturerRatingCount(lecturer.id);
@@ -103,7 +103,7 @@ export default function PLRatings({ navigation }) {
                 <Ionicons name={isSelected ? "chevron-up" : "chevron-down"} size={20} color={COLORS.textSecondary} />
               </TouchableOpacity>
 
-              {/* Expanded Ratings */}
+              {/* Expanded Ratings form */}
               {isSelected && (
                 <Card style={styles.expandedCard}>
                   <Text style={styles.reviewsTitle}>Student Reviews ({lecturerRatings.length})</Text>

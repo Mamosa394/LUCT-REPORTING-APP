@@ -1,4 +1,4 @@
-// app/prl/Profile.js
+//principal lecturer profile
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
@@ -10,11 +10,9 @@ import { logoutUser, updateUserProfile } from '../../src/store/authSlice';
 export default function PRLProfile({ navigation }) {
   const dispatch = useDispatch();
   const { user, isLoading } = useSelector(state => state.auth);
-  const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   
-  // Get position from user data - check multiple possible fields
+  // Get position from user data ; check multiple possible fields
   const userPosition = user?.position || user?.role || 'Principal Lecturer';
   const userStream = user?.stream || 'Not assigned';
   
@@ -40,28 +38,6 @@ export default function PRLProfile({ navigation }) {
       });
     }
   }, [user]);
-
-  const handleUpdate = async () => {
-    if (!formData.name.trim()) {
-      Alert.alert('Error', 'Name is required');
-      return;
-    }
-    
-    setIsSaving(true);
-    try {
-      await dispatch(updateUserProfile({
-        name: formData.name,
-        department: formData.department,
-      })).unwrap();
-      
-      Alert.alert('Success', 'Profile updated successfully');
-      setIsEditing(false);
-    } catch (error) {
-      Alert.alert('Error', error || 'Failed to update profile');
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -103,11 +79,6 @@ export default function PRLProfile({ navigation }) {
                 {user?.name?.charAt(0)?.toUpperCase() || 'P'}
               </Text>
             </View>
-            <TouchableOpacity
-              style={styles.editIcon}
-              onPress={() => setIsEditing(!isEditing)}
-            >
-            </TouchableOpacity>
           </View>
           <Text style={styles.userName}>{user?.name || 'Principal Lecturer'}</Text>
           <Text style={styles.userRole}>{userPosition}</Text>
@@ -128,63 +99,29 @@ export default function PRLProfile({ navigation }) {
             label="Full Name"
             value={formData.name}
             onChangeText={(text) => setFormData({ ...formData, name: text })}
-            editable={isEditing}
           />
           
           <Input
             label="Email"
             value={formData.email}
-            editable={false}
             keyboardType="email-address"
           />
           
           <Input
             label="Employee ID"
             value={formData.employeeId}
-            editable={false}
           />
           
           <Input
-            label="Department / Faculty"
+            label="Department"
             value={formData.department}
             onChangeText={(text) => setFormData({ ...formData, department: text })}
-            editable={isEditing}
           />
           
           <Input
             label="Position"
             value={formData.position}
-            editable={false}
           />
-          
-          {isEditing && (
-            <View style={styles.buttonRow}>
-              <Button
-                title="Cancel"
-                variant="secondary"
-                onPress={() => {
-                  setIsEditing(false);
-                  // Reset form to original user data
-                  setFormData({
-                    name: user?.name || '',
-                    email: user?.email || '',
-                    employeeId: user?.employeeId || '',
-                    department: user?.department || user?.faculty || '',
-                    stream: user?.stream || userStream,
-                    position: user?.position || user?.role || 'Principal Lecturer',
-                  });
-                }}
-                style={styles.button}
-              />
-              <Button
-                title={isSaving ? "Saving..." : "Save Changes"}
-                onPress={handleUpdate}
-                style={styles.button}
-                loading={isSaving}
-                disabled={isSaving}
-              />
-            </View>
-          )}
         </Card>
 
         {/* Logout Button */}

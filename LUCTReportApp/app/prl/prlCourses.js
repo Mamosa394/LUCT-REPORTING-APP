@@ -1,4 +1,4 @@
-// app/prl/Courses.js
+//principal lecturer courses
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, Modal } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';

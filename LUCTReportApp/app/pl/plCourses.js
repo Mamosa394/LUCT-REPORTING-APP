@@ -1,4 +1,4 @@
-// app/pl/Courses.js
+//program leader courses
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
@@ -178,14 +178,14 @@ export default function PLCourses({ navigation }) {
             label="Course Code *"
             value={formData.code}
             onChangeText={(text) => setFormData({ ...formData, code: text.toUpperCase() })}
-            placeholder="e.g., CS301"
+            placeholder="e.g., MDP0000"
           />
           
           <Input
             label="Department"
             value={formData.department}
             onChangeText={(text) => setFormData({ ...formData, department: text })}
-            placeholder="e.g., Computer Science"
+            placeholder="e.g., FICT"
           />
           
           <View style={styles.row}>
@@ -200,7 +200,7 @@ export default function PLCourses({ navigation }) {
               label="Year"
               value={formData.year}
               onChangeText={(text) => setFormData({ ...formData, year: text })}
-              placeholder="2024"
+              placeholder="2026"
               style={styles.halfInput}
             />
           </View>
@@ -209,7 +209,7 @@ export default function PLCourses({ navigation }) {
             label="Credits"
             value={formData.credits}
             onChangeText={(text) => setFormData({ ...formData, credits: text })}
-            placeholder="3"
+            placeholder="10"
             keyboardType="numeric"
           />
           

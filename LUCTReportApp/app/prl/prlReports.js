@@ -1,103 +1,100 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, Alert, TouchableOpacity, KeyboardAvoidingView, Platform, Switch } from 'react-native';
-import { useSelector } from 'react-redux';
-import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { useSelector, useDispatch } from 'react-redux';
+import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { ScreenContainer, LoadingSpinner, Card, Button } from '../../src/components/UI';
 import { COLORS, spacing, typography } from '../../config/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import { fetchReports, selectReports, selectReportsLoading } from '../../src/store/monitoringSlice';
 
 export default function PrlReports({ route, navigation }) {
-  console.log(`📥 [PrlReports] Rendering Route: ${route.name}`);
-  
   const { reportId } = route.params || {};
   const { user } = useSelector(state => state.auth);
+  const dispatch = useDispatch();
+  
+  // Get reports from Redux store
+  const reduxReports = useSelector(selectReports);
+  const reportsLoading = useSelector(selectReportsLoading);
   
   const [report, setReport] = useState(null);
   const [allReports, setAllReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState('');
-  const [showReviewed, setShowReviewed] = useState(false); // Toggle for showing reviewed reports
+  const [showReviewed, setShowReviewed] = useState(false);
 
-  // Refresh data when screen comes into focus (for the list view)
-  useFocusEffect(
-    React.useCallback(() => {
-      if (!reportId) {
-        fetchData();
-      }
-      return () => {};
-    }, [reportId, showReviewed]) // Re-fetch when toggle changes
-  );
+  // Fetch reports using Redux thunk
+  const fetchAllReports = useCallback(() => {
+    dispatch(fetchReports({}));
+  }, [dispatch]);
 
-  useEffect(() => {
-    if (reportId) {
-      fetchData();
-    }
-  }, [reportId]);
-
-  const fetchData = async () => {
+  const fetchReportById = useCallback(async (id) => {
     try {
       setLoading(true);
-      if (reportId) {
-        // Mode: Specific Report (from Dashboard)
-        console.log('🔍 Fetching report:', reportId);
-        const docSnap = await getDoc(doc(db, 'reports', reportId));
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          console.log('📄 Report data:', { id: docSnap.id, status: data.status, hasFeedback: !!data.prlFeedback });
-          setReport({ id: docSnap.id, ...data });
-          setFeedback(data.prlFeedback || '');
-        } else {
-          Alert.alert('Error', 'Report not found');
-          navigation.goBack();
-        }
+      const docSnap = await getDoc(doc(db, 'reports', id));
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setReport({ id: docSnap.id, ...data });
+        setFeedback(data.prlFeedback || '');
       } else {
-        // Mode: All Reports (from Tab bar) - Show both pending and reviewed
-        let reportsQuery;
-        
-        if (showReviewed) {
-          // Show ALL reports (pending, submitted, AND reviewed)
-          reportsQuery = query(
-            collection(db, 'reports'),
-            where('status', 'in', ['pending', 'submitted', 'reviewed'])
-          );
-        } else {
-          // Show only pending/submitted reports
-          reportsQuery = query(
-            collection(db, 'reports'), 
-            where('status', 'in', ['pending', 'submitted'])
-          );
-        }
-        
-        const snap = await getDocs(reportsQuery);
-        const reports = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        
-        // Sort by createdAt (newest first) and put pending at top
-        const sortedReports = reports.sort((a, b) => {
-          // First sort by status (pending/submitted before reviewed)
-          const statusOrder = { 'pending': 0, 'submitted': 1, 'reviewed': 2 };
-          const statusDiff = (statusOrder[a.status] || 0) - (statusOrder[b.status] || 0);
-          if (statusDiff !== 0) return statusDiff;
-          
-          // Then sort by date (newest first)
-          const dateA = a.createdAt?.toDate?.() || new Date(0);
-          const dateB = b.createdAt?.toDate?.() || new Date(0);
-          return dateB - dateA;
-        });
-        
-        console.log(`📋 Found ${sortedReports.length} reports (${showReviewed ? 'including reviewed' : 'pending only'})`);
-        setAllReports(sortedReports);
-        setReport(null);
+        Alert.alert('Error', 'Report not found');
+        navigation.goBack();
       }
     } catch (err) {
-      console.error('❌ [PrlReports] Fetch error:', err);
-      Alert.alert('Error', 'Failed to load data');
+      Alert.alert('Error', 'Failed to load report');
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigation]);
+
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (!reportId) {
+        fetchAllReports();
+      }
+    }, [reportId, fetchAllReports])
+  );
+
+  // Handle specific report view
+  useEffect(() => {
+    if (reportId) {
+      fetchReportById(reportId);
+    }
+  }, [reportId, fetchReportById]);
+
+  // Update local allReports when Redux reports change
+  useEffect(() => {
+    if (!reportId && reduxReports.length > 0) {
+      
+      let filteredReports = [...reduxReports];
+      
+      if (!showReviewed) {
+        // Show only pending/submitted reports
+        filteredReports = filteredReports.filter(r => 
+          r.status === 'pending' || r.status === 'submitted'
+        );
+      }
+      
+      // Sort by createdAt (newest first) and put pending at top
+      const sortedReports = filteredReports.sort((a, b) => {
+        const statusOrder = { 'pending': 0, 'submitted': 1, 'reviewed': 2 };
+        const statusDiff = (statusOrder[a.status] || 0) - (statusOrder[b.status] || 0);
+        if (statusDiff !== 0) return statusDiff;
+        
+        const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
+        const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
+        return dateB - dateA;
+      });
+      
+      setAllReports(sortedReports);
+      setLoading(false);
+    } else if (!reportId && reportsLoading === false) {
+      setLoading(false);
+    }
+  }, [reduxReports, showReviewed, reportId, reportsLoading]);
 
   const handleSubmitFeedback = async () => {
     if (!feedback.trim()) {
@@ -107,11 +104,6 @@ export default function PrlReports({ route, navigation }) {
     
     try {
       setSubmitting(true);
-      console.log('📤 Submitting feedback for report:', report.id);
-      console.log('📝 Feedback content:', feedback.trim());
-      console.log('👤 Reviewed by:', user?.name);
-      
-      // Update the report
       const reportRef = doc(db, 'reports', report.id);
       const updateData = {
         status: 'reviewed',
@@ -120,27 +112,22 @@ export default function PrlReports({ route, navigation }) {
         prlReviewedAt: serverTimestamp(),
       };
       
-      console.log('🔄 Updating with data:', updateData);
       await updateDoc(reportRef, updateData);
       
-      // Verify the update by reading it back
+      // Verify the update
       const verifySnap = await getDoc(reportRef);
       if (verifySnap.exists()) {
-        console.log('✅ Verification - New status:', verifySnap.data().status);
-        console.log('✅ Verification - Feedback saved:', !!verifySnap.data().prlFeedback);
       }
       
       Alert.alert('Success', 'Review submitted successfully', [
         { 
           text: 'OK', 
           onPress: () => {
-            // Navigate back and trigger refresh in dashboard
             navigation.goBack();
           }
         }
       ]);
     } catch (err) { 
-      console.error('❌ Submission error:', err);
       Alert.alert('Error', `Submission failed: ${err.message}`); 
     } finally { 
       setSubmitting(false); 
@@ -175,7 +162,7 @@ export default function PrlReports({ route, navigation }) {
           {/* Header with toggle */}
           <View style={styles.headerContainer}>
             <Text style={styles.title}>
-              {showReviewed ? ' Reports' : ' Reports'}
+              {showReviewed ? 'Reports' : 'All Reports'}
             </Text>
             <View style={styles.toggleContainer}>
               <Text style={styles.toggleLabel}>Show Reviewed</Text>
@@ -211,7 +198,7 @@ export default function PrlReports({ route, navigation }) {
           {allReports.length === 0 ? (
             <View style={styles.center}>
               <Ionicons name="folder-open-outline" size={64} color={COLORS.textSecondary} />
-              <Text style={styles.emptyText}>No reports found.</Text>
+              <Text style={styles.emptyText}>No reports found. Pull down to refresh or check your connection.</Text>
             </View>
           ) : (
             allReports.map(item => (
@@ -249,7 +236,7 @@ export default function PrlReports({ route, navigation }) {
     );
   }
 
-  // --- DETAIL VIEW: Show specific report feedback form ---
+  // Show specific report feedback form 
   return (
     <ScreenContainer>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{flex: 1}}>
@@ -286,7 +273,10 @@ export default function PrlReports({ route, navigation }) {
             {report.prlReviewedAt && (
               <View style={styles.row}>
                 <Text style={styles.label}>Reviewed At:</Text>
-                <Text style={styles.val}>{report.prlReviewedAt?.toDate?.()?.toLocaleString() || 'N/A'}</Text>
+                <Text style={styles.val}>
+                  {report.prlReviewedAt?.toDate?.()?.toLocaleString() || 
+                   (typeof report.prlReviewedAt === 'string' ? new Date(report.prlReviewedAt).toLocaleString() : 'N/A')}
+                </Text>
               </View>
             )}
           </Card>
@@ -431,6 +421,7 @@ const styles = StyleSheet.create({
   emptyText: {
     color: COLORS.textSecondary,
     fontSize: 16,
+    textAlign: 'center',
   },
   reviewedContainer: {
     alignItems: 'center',

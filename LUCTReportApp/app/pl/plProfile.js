@@ -1,4 +1,4 @@
-// app/pl/Profile.js
+//program leader profile
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
