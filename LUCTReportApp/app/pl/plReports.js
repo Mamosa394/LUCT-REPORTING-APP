@@ -1,23 +1,23 @@
-// app/pl/Reports.js
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { useDispatch, useSelector } from 'react-redux';
+//program leader reports
+import React, { useEffect, useState } from 'react';   // Imports React hooks for state and side effects
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';    // Imports UI components
+import { useDispatch, useSelector } from 'react-redux';   //imports redux hooks for state management
 import { Ionicons } from '@expo/vector-icons';
-import { ScreenContainer, LoadingSpinner, Card } from '../../src/components/UI';
+import { ScreenContainer, LoadingSpinner, Card } from '../../src/components/UI';    //imports my ui components i created
 import { COLORS, spacing, typography } from '../../config/theme';
 import { fetchReports } from '../../src/store/monitoringSlice';
 
 export default function PLReports({ navigation }) {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch();  //dispatch actions to mount to load and select reports
   const { reports, reportsLoading } = useSelector(state => state.monitoring);
   const [selectedReport, setSelectedReport] = useState(null);
 
-  useEffect(() => {
+  useEffect(() => {    //fetches reports
     dispatch(fetchReports());
   }, []);
 
-  const getStatusColor = (status) => {
-    switch (status?.toLowerCase()) {
+  const getStatusColor = (status) => {    //function to categorize reports based on colour
+    switch (status?.toLowerCase()) {   //switch statement to handle funtions
       case 'approved': return COLORS.success;
       case 'rejected': return COLORS.error;
       case 'pending': return COLORS.warning;
@@ -25,11 +25,11 @@ export default function PLReports({ navigation }) {
     }
   };
 
-  if (reportsLoading && reports.length === 0) {
+  if (reportsLoading && reports.length === 0) {    //statement to load reports when fetching
     return <LoadingSpinner fullScreen />;
   }
 
-  if (selectedReport) {
+  if (selectedReport) {    // If a report has been selected for detailed view
     return (
       <ScreenContainer scrollable={true}>
         <View style={styles.container}>
@@ -37,7 +37,7 @@ export default function PLReports({ navigation }) {
             <Ionicons name="arrow-back" size={24} color={COLORS.primary} />
             <Text style={styles.backText}>Back to Reports</Text>
           </TouchableOpacity>
-
+ // Card displaying detailed report info
           <Card style={styles.detailCard}>
             <View style={styles.statusRow}>
               <View style={[styles.statusBadge, { backgroundColor: getStatusColor(selectedReport.status) + '20' }]}>
@@ -49,8 +49,6 @@ export default function PLReports({ navigation }) {
                 {selectedReport.createdAt ? new Date(selectedReport.createdAt).toLocaleDateString() : ''}
               </Text>
             </View>
-
-            <Text style={styles.reportTitle}>{selectedReport.title || 'Untitled Report'}</Text>
             
             <View style={styles.infoGrid}>
               <View style={styles.infoItem}>
@@ -74,10 +72,6 @@ export default function PLReports({ navigation }) {
                 <Text style={styles.infoValue}>
                   {selectedReport.actualStudentsPresent}/{selectedReport.totalRegisteredStudents}
                 </Text>
-              </View>
-              <View style={styles.infoItem}>
-                <Text style={styles.infoLabel}>Attendance Rate</Text>
-                <Text style={styles.infoValue}>{selectedReport.attendanceRate}%</Text>
               </View>
             </View>
 
@@ -103,7 +97,7 @@ export default function PLReports({ navigation }) {
             )}
           </Card>
 
-          {/* PRL Feedback */}
+          //PRL Feedback 
           {selectedReport.feedback && (
             <Card style={styles.feedbackCard}>
               <Text style={styles.feedbackTitle}>PRL Feedback</Text>
@@ -144,7 +138,6 @@ export default function PLReports({ navigation }) {
           >
             <View style={styles.reportHeader}>
               <View style={styles.reportInfo}>
-                <Text style={styles.reportName}>{report.courseName || report.title || 'Untitled'}</Text>
                 <Text style={styles.reportCode}>{report.courseCode}</Text>
                 <Text style={styles.reportLecturer}>{report.lecturerName}</Text>
               </View>
@@ -208,11 +201,6 @@ const styles = StyleSheet.create({
   reportInfo: {
     flex: 1,
   },
-  reportName: {
-    ...typography.body,
-    color: COLORS.text,
-    fontWeight: '600',
-  },
   reportCode: {
     ...typography.caption,
     color: COLORS.primary,
@@ -268,11 +256,6 @@ const styles = StyleSheet.create({
   dateText: {
     ...typography.caption,
     color: COLORS.textSecondary,
-  },
-  reportTitle: {
-    ...typography.h3,
-    color: COLORS.text,
-    marginBottom: spacing.md,
   },
   infoGrid: {
     flexDirection: 'row',

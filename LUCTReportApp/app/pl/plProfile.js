@@ -8,24 +8,16 @@ import { COLORS, spacing, typography } from '../../config/theme';
 import { logout } from '../../src/store/authSlice';
 
 export default function PLProfile({ navigation }) {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch();    
   const { user, isLoading } = useSelector(state => state.auth);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
-    phone: user?.phone || '',
     employeeId: user?.employeeId || '',
     department: user?.department || '',
     position: user?.position || 'Program Leader',
-    office: user?.office || '',
   });
-
-  const handleUpdate = async () => {
-    // Update profile logic
-    Alert.alert('Success', 'Profile updated successfully');
-    setIsEditing(false);
-  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -45,7 +37,7 @@ export default function PLProfile({ navigation }) {
   return (
     <ScreenContainer scrollable={true}>
       <View style={styles.container}>
-        {/* Profile Header */}
+        //Profile Header 
         <View style={styles.header}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
@@ -56,11 +48,11 @@ export default function PLProfile({ navigation }) {
             
           </View>
           <Text style={styles.userName}>{user?.name}</Text>
-          <Text style={styles.userRole}>Principal Lecturer</Text>
+          <Text style={styles.userRole}>Program Leader</Text>
           <Text style={styles.userId}>{user?.employeeId}</Text>
         </View>
 
-        {/* Profile Info */}
+        // Profile Info 
         <Card style={styles.infoCard}>
           <Text style={styles.sectionTitle}>Personal Information</Text>
           
