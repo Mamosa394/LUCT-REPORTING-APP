@@ -1,4 +1,4 @@
-// app/student/Profile.js
+// student Profile
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Alert } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
@@ -10,8 +10,6 @@ import { logoutUser, updateUserProfile } from '../../src/store/authSlice';
 export default function StudentProfile({ navigation }) {
   const dispatch = useDispatch();
   const { user, isLoading } = useSelector(state => state.auth);
-  const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [formData, setFormData] = useState({
     name: user?.name || '',
@@ -20,22 +18,6 @@ export default function StudentProfile({ navigation }) {
     faculty: user?.faculty || user?.department || '',
   });
 
-  const handleUpdate = async () => {
-    setIsSaving(true);
-    try {
-      const result = await dispatch(updateUserProfile({
-        name: formData.name,
-        faculty: formData.faculty,
-      })).unwrap();
-      
-      Alert.alert('Success', 'Profile updated successfully');
-      setIsEditing(false);
-    } catch (error) {
-      Alert.alert('Error', error || 'Failed to update profile');
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -91,55 +73,25 @@ export default function StudentProfile({ navigation }) {
             label="Full Name"
             value={formData.name}
             onChangeText={(text) => setFormData({ ...formData, name: text })}
-            editable={isEditing}
           />
           
           <Input
             label="Email"
             value={formData.email}
             onChangeText={(text) => setFormData({ ...formData, email: text })}
-            editable={false}
             keyboardType="email-address"
           />
           
           <Input
             label="Student ID"
             value={formData.studentId}
-            editable={false}
           />
           
           <Input
             label="Faculty"
             value={formData.faculty}
-            editable={isEditing}
             onChangeText={(text) => setFormData({ ...formData, faculty: text })}
           />
-          
-          {isEditing && (
-            <View style={styles.buttonRow}>
-              <Button
-                title="Cancel"
-                variant="secondary"
-                onPress={() => {
-                  setIsEditing(false);
-                  setFormData({
-                    name: user?.name || '',
-                    email: user?.email || '',
-                    studentId: user?.studentId || '',
-                    faculty: user?.faculty || user?.department || '',
-                  });
-                }}
-                style={styles.button}
-              />
-              <Button
-                title={isSaving ? "Saving..." : "Save Changes"}
-                onPress={handleUpdate}
-                style={styles.button}
-                loading={isSaving}
-                disabled={isSaving}
-              />
-            </View>
-          )}
         </Card>
 
         {/* Logout Button */}

@@ -1,4 +1,4 @@
-// app/student/Attendance.js - Fixed student ID handling
+// student Attendance
 
 import React, { useEffect, useState } from 'react';
 import {
@@ -34,7 +34,6 @@ export default function StudentAttendance({ navigation }) {
   const [attendanceStatus, setAttendanceStatus] = useState(null);
   const [currentSession, setCurrentSession] = useState(null);
 
-  // ✅ FIXED: Get the correct student ID
   const studentId = user?.uid || user?.id || user?.studentId || user?.employeeId;
   const studentName = user?.name || user?.displayName || 'Student';
 
@@ -103,7 +102,6 @@ export default function StudentAttendance({ navigation }) {
   };
 
   const handleMarkAttendance = async (status) => {
-    // ✅ FIXED: Validate all required fields
     if (!selectedCourse) {
       Alert.alert('Select Course', 'Please select a course first');
       return;
@@ -111,7 +109,6 @@ export default function StudentAttendance({ navigation }) {
 
     if (!studentId) {
       Alert.alert('Error', 'Student ID not found. Please log in again.');
-      console.error('❌ Student ID is undefined. User object:', user);
       return;
     }
 
@@ -135,8 +132,6 @@ export default function StudentAttendance({ navigation }) {
         lecturerName: selectedCourse.lecturerName || null
       };
 
-      console.log('📝 Marking attendance with data:', attendanceData);
-
       await dispatch(markAttendance(attendanceData)).unwrap();
       
       setShowMarkModal(false);
@@ -158,7 +153,6 @@ export default function StudentAttendance({ navigation }) {
         dispatch(fetchStudentAttendanceSummary({ studentId: studentId }));
       }
     } catch (error) {
-      console.error('❌ Mark attendance error:', error);
       Alert.alert('Error', error.message || 'Failed to mark attendance');
     }
   };
@@ -191,8 +185,6 @@ export default function StudentAttendance({ navigation }) {
   };
 
   const todayStatus = getTodayAttendanceStatus();
-
-  // ✅ FIXED: Show error if student ID is missing
   if (!studentId) {
     return (
       <ScreenContainer>

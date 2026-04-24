@@ -1,4 +1,4 @@
-// app/student/CourseMonitoring.js
+// student monitoring
 import React, { useEffect, useState } from 'react';
 import {
   View,

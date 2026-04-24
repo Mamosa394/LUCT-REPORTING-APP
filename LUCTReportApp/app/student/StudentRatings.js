@@ -1,4 +1,4 @@
-// app/student/Ratings.js
+// student Ratings
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
@@ -69,7 +69,6 @@ export default function StudentRatings({ navigation }) {
 
   const handleSubmitRating = async (ratingData) => {
     try {
-      console.log('📊 Rating data from form:', ratingData);
       
       // Prepare rating data for submission
       const ratingToSubmit = {
@@ -83,8 +82,6 @@ export default function StudentRatings({ navigation }) {
         comment: ratingData.comment || '',
         aspects: ratingData.scores || {},
       };
-      
-      console.log('📤 Submitting to Firestore:', ratingToSubmit);
       
       // Submit to Firestore
       await dispatch(submitRating(ratingToSubmit)).unwrap();

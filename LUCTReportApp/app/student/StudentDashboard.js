@@ -1,4 +1,4 @@
-// app/student/StudentDashboard.js - Simplified attendance overview
+//Student Dashboard
 
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
@@ -45,7 +45,6 @@ export default function StudentDashboard({ navigation }) {
         dispatch(fetchStudentAttendanceSummary({ studentId: studentId })),
       ]);
     } catch (error) {
-      console.error('❌ [StudentDashboard] Error loading dashboard data:', error);
     }
   };
 
@@ -124,7 +123,7 @@ export default function StudentDashboard({ navigation }) {
           <Text style={styles.userId}>ID: {user?.studentId || studentId || 'N/A'}</Text>
         </View>
 
-        {/* Attendance Overview Card - Simple Version */}
+        {/* Attendance Overview Card */}
         <Card style={styles.sectionCard}>
           <View style={styles.cardHeader}>
             <Text style={styles.sectionTitle}>Attendance Overview</Text>

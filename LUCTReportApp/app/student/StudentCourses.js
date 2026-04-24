@@ -1,4 +1,4 @@
-// app/student/StudentCourses.js - Fixed with proper SafeAreaView
+// StudentCourses
 
 import React, { useEffect, useState, useRef } from 'react';
 import {
@@ -10,7 +10,7 @@ import {
   RefreshControl,
   TextInput
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context'; // ✅ Correct import
+import { SafeAreaView } from 'react-native-safe-area-context'; 
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { LoadingSpinner, Card } from '../../src/components/UI';
@@ -39,7 +39,6 @@ export default function StudentCourses({ navigation, route }) {
     const courseName = route.params?.courseName;
     
     if (courseId && courses.length > 0) {
-      console.log('📚 [StudentCourses] Received course from dashboard:', courseId, courseName);
       setSelectedCourseId(courseId);
       
       const course = courses.find(c => c.id === courseId);
