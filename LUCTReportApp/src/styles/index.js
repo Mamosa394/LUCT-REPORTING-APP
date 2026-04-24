@@ -1,4 +1,4 @@
-// src/styles/index.js
+// index
 import { COLORS, paperTheme, spacing, typography, shadows, createThemedStyles } from '../config/theme';
 
 // Export all theme-related styles
@@ -10,7 +10,6 @@ export const theme = {
   paperTheme,
 };
 
-// Common style objects that can be reused across components
 export const commonStyles = {
   container: {
     flex: 1,

@@ -1,4 +1,4 @@
-// src/store/authSlice.js
+//authSlice
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { 
@@ -33,12 +33,11 @@ const setSessionStart = async () => {
   await AsyncStorage.setItem(SESSION_STORAGE_KEY, Date.now().toString());
 };
 
-// ✅ NEW: Fetch users from Firestore
+// Fetch users from Firestore
 export const fetchUsers = createAsyncThunk(
   'auth/fetchUsers',
   async (filters = {}, { rejectWithValue }) => {
     try {
-      console.log('🔵 [auth] Fetching users with filters:', filters);
       
       const usersRef = collection(db, 'users');
       let q = query(usersRef);
@@ -63,28 +62,25 @@ export const fetchUsers = createAsyncThunk(
         users.push({ id: doc.id, ...doc.data() });
       });
       
-      console.log(`✅ [auth] Fetched ${users.length} users`);
       return users;
     } catch (error) {
-      console.error('❌ [auth] Failed to fetch users:', error.message);
       return rejectWithValue(error.message);
     }
   }
 );
 
-// ✅ NEW: Fetch single user by ID
+// Fetch single user by ID
 export const fetchUserById = createAsyncThunk(
   'auth/fetchUserById',
   async (userId, { rejectWithValue }) => {
     try {
-      console.log('🔵 [auth] Fetching user by ID:', userId);
       
       const usersRef = collection(db, 'users');
       const q = query(usersRef, where('uid', '==', userId));
       const snapshot = await getDocs(q);
       
       if (snapshot.empty) {
-        // Try by employeeId if uid doesn't match
+        // Try by employeeId 
         const q2 = query(usersRef, where('employeeId', '==', userId));
         const snapshot2 = await getDocs(q2);
         
@@ -93,26 +89,22 @@ export const fetchUserById = createAsyncThunk(
         }
         
         const userDoc = snapshot2.docs[0];
-        console.log('✅ [auth] User found by employeeId');
         return { id: userDoc.id, ...userDoc.data() };
       }
       
       const userDoc = snapshot.docs[0];
-      console.log('✅ [auth] User found by uid');
       return { id: userDoc.id, ...userDoc.data() };
     } catch (error) {
-      console.error('❌ [auth] Failed to fetch user:', error.message);
       return rejectWithValue(error.message);
     }
   }
 );
 
-// ✅ NEW: Fetch lecturers (users with role='lecturer')
+//Fetch lecturers (users with role='lecturer')
 export const fetchLecturers = createAsyncThunk(
   'auth/fetchLecturers',
   async (filters = {}, { rejectWithValue }) => {
     try {
-      console.log('🔵 [auth] Fetching lecturers with filters:', filters);
       
       const usersRef = collection(db, 'users');
       const constraints = [where('role', '==', 'lecturer')];
@@ -133,11 +125,8 @@ export const fetchLecturers = createAsyncThunk(
       snapshot.forEach(doc => {
         lecturers.push({ id: doc.id, ...doc.data() });
       });
-      
-      console.log(`✅ [auth] Fetched ${lecturers.length} lecturers`);
       return lecturers;
     } catch (error) {
-      console.error('❌ [auth] Failed to fetch lecturers:', error.message);
       return rejectWithValue(error.message);
     }
   }
@@ -162,7 +151,6 @@ export const login = createAsyncThunk(
   'auth/login',
   async ({ email, password }, { rejectWithValue }) => {
     try {
-      console.log('🔵 [auth] Login attempt for:', email);
       await logLoginAttempt(email, null, false);
       const result = await loginUser(email, password);
       
@@ -176,28 +164,23 @@ export const login = createAsyncThunk(
       await setSessionStart();
       
       await logLoginAttempt(email, result.user.role, true);
-      console.log('✅ [auth] Login successful for:', email);
       return { ...result, user: userWithPhone };
     } catch (error) {
-      console.error('❌ [auth] Login failed:', error.message);
       await logLoginAttempt(email, null, false, error.message);
       return rejectWithValue(error.message);
     }
   }
 );
 
-// RECOMMENDED FIX: Create an async logout thunk
+//async logout thunk
 export const logoutUser = createAsyncThunk(
   'auth/logoutUser',
   async (_, { dispatch, rejectWithValue }) => {
     try {
-      console.log('🔵 [auth] Executing async logout cleanup');
       await AsyncStorage.multiRemove(['token', 'user', SESSION_STORAGE_KEY]);
       dispatch(logout()); // Clear the synchronous state
-      console.log('✅ [auth] Async logout successful');
       return true;
     } catch (error) {
-      console.error('❌ [auth] Logout storage cleanup failed:', error.message);
       return rejectWithValue(error.message);
     }
   }
@@ -207,7 +190,6 @@ export const register = createAsyncThunk(
   'auth/register',
   async (userData, { rejectWithValue }) => {
     try {
-      console.log('🔵 [auth] Register attempt for:', userData.email);
       if (!userData.name) throw new Error('Name is required');
       if (!userData.email) throw new Error('Email is required');
       if (!userData.password) throw new Error('Password is required');
@@ -237,10 +219,8 @@ export const register = createAsyncThunk(
       await setSessionStart();
       
       await logRegistrationAttempt(userData, true);
-      console.log('✅ [auth] Registration successful for:', userData.email);
       return { ...result, user: userWithPhone };
     } catch (error) {
-      console.error('❌ [auth] Registration failed:', error.message);
       await logRegistrationAttempt(userData, false, error.message);
       return rejectWithValue(error.message);
     }
@@ -251,12 +231,9 @@ export const forgotPassword = createAsyncThunk(
   'auth/forgotPassword',
   async (email, { rejectWithValue }) => {
     try {
-      console.log('🔵 [auth] Forgot password attempt for:', email);
       const result = await resetPassword(email);
-      console.log('✅ [auth] Password reset email sent');
       return result;
     } catch (error) {
-      console.error('❌ [auth] Forgot password failed:', error.message);
       return rejectWithValue(error.message);
     }
   }
@@ -266,10 +243,8 @@ export const resetPasswordThunk = createAsyncThunk(
   'auth/resetPassword',
   async ({ token, password }, { rejectWithValue }) => {
     try {
-      console.log('🔵 [auth] Reset password attempt');
       return { success: true, message: 'Password reset via email link' };
     } catch (error) {
-      console.error('❌ [auth] Reset password failed:', error.message);
       return rejectWithValue(error.message);
     }
   }
@@ -279,11 +254,9 @@ export const loadStoredUser = createAsyncThunk(
   'auth/loadStoredUser',
   async (_, { rejectWithValue, dispatch }) => {
     try {
-      console.log('🔵 [auth] Loading stored user');
       const validSession = await isSessionValid();
       
       if (!validSession) {
-        console.log('⚠️ [auth] Session expired, clearing stored data');
         await AsyncStorage.multiRemove(['token', 'user', SESSION_STORAGE_KEY]);
         return null;
       }
@@ -293,12 +266,10 @@ export const loadStoredUser = createAsyncThunk(
       
       if (token && userData) {
         const user = JSON.parse(userData);
-        console.log('✅ [auth] Stored user loaded:', user?.email);
         return { token, user };
       }
       return null;
     } catch (error) {
-      console.error('❌ [auth] Failed to load stored user:', error.message);
       return rejectWithValue(error.message);
     }
   }
@@ -308,7 +279,6 @@ export const updateUserProfile = createAsyncThunk(
   'auth/updateProfile',
   async (profileData, { getState, rejectWithValue }) => {
     try {
-      console.log('🔵 [auth] Updating user profile:', profileData);
       const { auth } = getState();
       const currentUser = auth.user;
       
@@ -319,10 +289,8 @@ export const updateUserProfile = createAsyncThunk(
       };
       
       await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
-      console.log('✅ [auth] Profile updated successfully');
       return updatedUser;
     } catch (error) {
-      console.error('❌ [auth] Profile update failed:', error.message);
       return rejectWithValue(error.message);
     }
   }
@@ -335,7 +303,6 @@ export const checkSessionTimeout = createAsyncThunk(
     if (auth.isAuthenticated && auth.user) {
       const isValid = await isSessionValid();
       if (!isValid) {
-        console.log('⏰ [auth] Session timeout, logging out');
         dispatch(logoutUser()); // Use the thunk here too
         return true;
       }
@@ -353,7 +320,7 @@ const authSlice = createSlice({
     error: null,
     isAuthenticated: false,
     isInitialized: false,
-    // ✅ NEW: Users state
+
     users: [],
     lecturers: [],
     selectedUser: null,
@@ -362,7 +329,6 @@ const authSlice = createSlice({
   reducers: {
     // Pure reducer for state synchronization
     logout: (state) => {
-      console.log('🔵 [auth] Reseting auth state');
       state.user = null;
       state.token = null;
       state.isAuthenticated = false;
@@ -378,7 +344,7 @@ const authSlice = createSlice({
       state.user = action.payload;
       state.isAuthenticated = true;
     },
-    // ✅ NEW: Clear selected user
+    // Clear selected user
     clearSelectedUser: (state) => {
       state.selectedUser = null;
     },
@@ -461,7 +427,7 @@ const authSlice = createSlice({
         state.error = action.payload;
       })
       
-      // ✅ NEW: Fetch Users
+      //Fetch Users
       .addCase(fetchUsers.pending, (state) => {
         state.usersLoading = true;
         state.error = null;
@@ -475,7 +441,7 @@ const authSlice = createSlice({
         state.error = action.payload;
       })
       
-      // ✅ NEW: Fetch User By ID
+      // Fetch User By ID
       .addCase(fetchUserById.pending, (state) => {
         state.isLoading = true;
       })
@@ -488,7 +454,7 @@ const authSlice = createSlice({
         state.error = action.payload;
       })
       
-      // ✅ NEW: Fetch Lecturers
+      // Fetch Lecturers
       .addCase(fetchLecturers.pending, (state) => {
         state.usersLoading = true;
       })
@@ -514,10 +480,10 @@ const authSlice = createSlice({
   },
 });
 
-// ✅ Export actions
+// Export actions
 export const { logout, clearError, setUser, clearSelectedUser } = authSlice.actions;
 
-// ✅ Selectors
+// Selectors
 export const selectUsers = (state) => state.auth?.users || [];
 export const selectLecturers = (state) => state.auth?.lecturers || [];
 export const selectSelectedUser = (state) => state.auth?.selectedUser || null;

@@ -1,4 +1,4 @@
-// src/utils/validators.js
+//validators
 import { z } from 'zod';
 
 // Login Schema
@@ -12,7 +12,7 @@ export const loginSchema = z.object({
     .min(6, 'Password must be at least 6 characters'),
 });
 
-// Register Schema with all 5 roles - ENHANCED VERSION with phone and better email validation
+// Register Schema with all 5 roles 
 export const registerSchema = z.object({
   name: z.string()
     .trim()
@@ -24,7 +24,7 @@ export const registerSchema = z.object({
     .trim()
     .toLowerCase() // Normalize email to lowercase
     .min(1, 'Email is required')
-    // Enhanced email validation with proper regex
+  
     .regex(
       /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
       'Please enter a valid email address (e.g., name@domain.com)'

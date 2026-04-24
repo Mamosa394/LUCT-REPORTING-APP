@@ -1,4 +1,4 @@
-// app/auth/RegisterScreen.js
+//RegisterScreen
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
@@ -13,7 +13,7 @@ import { registerSchema } from '../../src/utils/validators';
 import { Input, Button } from '../../src/components/UI';
 import { COLORS, spacing, typography } from '../../config/theme';
 
-// Roles - Admin removed, Program Leader gets admin privileges
+// Roles
 const ROLES = [
   { id: 'student', label: 'Student', icon: 'school-outline' },
   { id: 'lecturer', label: 'Lecturer', icon: 'people-outline' },
@@ -38,7 +38,7 @@ export default function RegisterScreen({ navigation }) {
       studentId: '', 
       employeeId: '',
       stream: '',
-      phone: '', // ADDED phone field
+      phone: '', 
     },
   });
 
@@ -64,62 +64,49 @@ export default function RegisterScreen({ navigation }) {
   };
 
   const onSubmit = async (data) => {
-    console.log('🔵 [RegisterScreen] Form submitted with data:', { ...data, password: '***' });
-    
     // Validate role-specific fields before submission
     if (data.role === 'student' && !data.studentId) {
-      console.log('❌ [RegisterScreen] Student ID missing');
       Alert.alert('Validation Error', 'Student ID is required for student accounts');
       return;
     }
     
     if ((data.role === 'lecturer' || data.role === 'prl' || data.role === 'pl') && !data.employeeId) {
-      console.log('❌ [RegisterScreen] Employee ID missing for role:', data.role);
       Alert.alert('Validation Error', 'Employee ID is required for staff accounts');
       return;
     }
     
     if (data.role === 'prl' && !data.stream) {
-      console.log('❌ [RegisterScreen] Stream missing for PRL');
       Alert.alert('Validation Error', 'Stream/Department is required for Principal Lecturers');
       return;
     }
     
     if (!data.department) {
-      console.log('❌ [RegisterScreen] Department missing');
       Alert.alert('Validation Error', 'Department is required for all accounts');
       return;
     }
 
     if (!data.name) {
-      console.log('❌ [RegisterScreen] Name missing');
       Alert.alert('Validation Error', 'Full name is required');
       return;
     }
 
     if (!data.email) {
-      console.log('❌ [RegisterScreen] Email missing');
       Alert.alert('Validation Error', 'Email is required');
       return;
     }
 
     if (!data.password) {
-      console.log('❌ [RegisterScreen] Password missing');
       Alert.alert('Validation Error', 'Password is required');
       return;
     }
 
     if (data.password !== data.confirmPassword) {
-      console.log('❌ [RegisterScreen] Passwords do not match');
       Alert.alert('Validation Error', 'Passwords do not match');
       return;
     }
-
-    console.log('✅ [RegisterScreen] Validation passed, dispatching register action...');
     
     try {
       const result = await dispatch(register(data)).unwrap();
-      console.log('✅ [RegisterScreen] Registration successful:', result);
       
       let successMessage = `Account created successfully as ${ROLES.find(r => r.id === data.role)?.label}. Please login.`;
       if (data.role === 'pl') {
@@ -137,7 +124,6 @@ export default function RegisterScreen({ navigation }) {
         ]
       );
     } catch (err) {
-      console.error('❌ [RegisterScreen] Registration failed:', err);
       
       // Handle specific error messages
       let errorMessage = err.message || 'Failed to create account. Please try again.';
@@ -196,7 +182,7 @@ export default function RegisterScreen({ navigation }) {
           <Text style={styles.title}>Create Account</Text>
           <Text style={styles.subtitle}>Join the LUCT Reporting System</Text>
 
-          {/* Role Selection - Professional Stack Layout */}
+          {/* Role Selection*/}
           <Text style={styles.sectionLabel}>Select Your Role</Text>
           <View style={styles.rolesStack}>
             {ROLES.map((role) => (
@@ -231,7 +217,7 @@ export default function RegisterScreen({ navigation }) {
             ))}
           </View>
 
-          {/* Program Leader Note - Admin privileges info */}
+          {/* Program Leader Note  */}
           {watchRole === 'pl' && (
             <View style={styles.programLeaderNote}>
               <Ionicons name="shield-checkmark-outline" size={20} color={COLORS.primary} />
@@ -264,7 +250,7 @@ export default function RegisterScreen({ navigation }) {
                 label="Email Address"
                 value={value}
                 onChangeText={onChange}
-                placeholder="you@luct.edu"
+                placeholder="email@gmail.com"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 error={errors.email?.message}
@@ -297,7 +283,7 @@ export default function RegisterScreen({ navigation }) {
                 label="Confirm Password"
                 value={value}
                 onChangeText={onChange}
-                placeholder="Confirm your password"
+                placeholder="Confirm password"
                 secureTextEntry
                 error={errors.confirmPassword?.message}
                 leftIcon={<Ionicons name="lock-closed-outline" size={20} color={COLORS.textSecondary} />}
@@ -305,16 +291,16 @@ export default function RegisterScreen({ navigation }) {
             )}
           />
 
-          {/* Phone Number Field - Optional for all users */}
+          {/* Phone Number Field */}
           <Controller
             control={control}
             name="phone"
             render={({ field: { onChange, value } }) => (
               <Input
-                label="Phone Number (Optional)"
+                label="Phone Number"
                 value={value}
                 onChangeText={onChange}
-                placeholder="e.g., +266 1234 5678"
+                placeholder=" +266 1234 5678"
                 keyboardType="phone-pad"
                 error={errors.phone?.message}
                 leftIcon={<Ionicons name="call-outline" size={20} color={COLORS.textSecondary} />}
@@ -330,7 +316,7 @@ export default function RegisterScreen({ navigation }) {
                 label="Faculty"
                 value={value}
                 onChangeText={onChange}
-                placeholder="e.g., FICT"
+                placeholder="FICT"
                 error={errors.department?.message}
                 leftIcon={<Ionicons name="business-outline" size={20} color={COLORS.textSecondary} />}
               />
@@ -347,7 +333,7 @@ export default function RegisterScreen({ navigation }) {
                   label="Student ID"
                   value={value}
                   onChangeText={onChange}
-                  placeholder="e.g., 901017000"
+                  placeholder="901017000"
                   error={errors.studentId?.message}
                   leftIcon={<Ionicons name="card-outline" size={20} color={COLORS.textSecondary} />}
                 />

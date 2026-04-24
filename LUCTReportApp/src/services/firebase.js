@@ -9,7 +9,6 @@ import {
 import { getFirestore, collection, doc, setDoc, getDoc, addDoc, query, orderBy, getDocs, limit } from 'firebase/firestore';
 
 // Your Firebase configuration
-// IMPORTANT: Replace this with your actual Firebase config from Firebase Console
 const firebaseConfig = {
   apiKey: "AIzaSyDrv_30LrrF5RfJrforMXJZzAeYEMR8Mfg",
   authDomain: "luct-reporting-database.firebaseapp.com",
@@ -26,12 +25,10 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-console.log('🔥 [Firebase] Firebase initialized successfully');
 
 // Helper function to register user with role
 const registerUser = async (userData) => {
   try {
-    console.log('🔵 [Firebase] Registering user:', userData.email);
     
     // Create user with email and password
     const userCredential = await createUserWithEmailAndPassword(
@@ -41,7 +38,6 @@ const registerUser = async (userData) => {
     );
     
     const user = userCredential.user;
-    console.log('✅ [Firebase] User created in Auth:', user.uid);
     
     // Update profile with display name
     await updateProfile(user, {
@@ -72,7 +68,6 @@ const registerUser = async (userData) => {
     
     // Save user data to Firestore
     await setDoc(doc(db, 'users', user.uid), userFirestoreData);
-    console.log('✅ [Firebase] User data saved to Firestore');
     
     // Return formatted user data
     return {
@@ -89,16 +84,13 @@ const registerUser = async (userData) => {
       }
     };
   } catch (error) {
-    console.error('❌ [Firebase] Registration error:', error.code, error.message);
     throw error;
   }
 };
 
 // Helper function to login user
 const loginUser = async (email, password) => {
-  try {
-    console.log('🔵 [Firebase] Logging in user:', email);
-    
+  try {   
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
     
@@ -110,7 +102,6 @@ const loginUser = async (email, password) => {
     }
     
     const userData = userDoc.data();
-    console.log('✅ [Firebase] User logged in successfully:', user.uid);
     
     return {
       token: await user.getIdToken(),
@@ -126,7 +117,6 @@ const loginUser = async (email, password) => {
       }
     };
   } catch (error) {
-    console.error('❌ [Firebase] Login error:', error.code, error.message);
     throw error;
   }
 };
@@ -144,9 +134,7 @@ const logRegistrationAttempt = async (userData, success, errorMessage = null) =>
     };
     
     await addDoc(collection(db, 'registration_logs'), logData);
-    console.log('📝 [Firebase] Registration logged:', { email: userData.email, success });
   } catch (err) {
-    console.error('❌ [Firebase] Failed to log registration:', err);
   }
 };
 
@@ -162,9 +150,7 @@ const logLoginAttempt = async (email, role, success, errorMessage = null) => {
     };
     
     await addDoc(collection(db, 'login_logs'), logData);
-    console.log('📝 [Firebase] Login logged:', { email, success });
   } catch (err) {
-    console.error('❌ [Firebase] Failed to log login:', err);
   }
 };
 
@@ -179,7 +165,6 @@ const getRecentRegistrations = async (limitCount = 10) => {
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
-    console.error('❌ [Firebase] Failed to get registrations:', error);
     return [];
   }
 };
@@ -195,7 +180,6 @@ const getRecentLogins = async (limitCount = 10) => {
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
-    console.error('❌ [Firebase] Failed to get logins:', error);
     return [];
   }
 };
@@ -206,7 +190,6 @@ const getAllUsers = async () => {
     const querySnapshot = await getDocs(collection(db, 'users'));
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
-    console.error('❌ [Firebase] Failed to get users:', error);
     return [];
   }
 };
@@ -215,10 +198,8 @@ const getAllUsers = async () => {
 const resetPassword = async (email) => {
   try {
     await sendPasswordResetEmail(auth, email);
-    console.log('✅ [Firebase] Password reset email sent to:', email);
     return { success: true, message: 'Password reset email sent' };
   } catch (error) {
-    console.error('❌ [Firebase] Password reset error:', error.code, error.message);
     throw error;
   }
 };

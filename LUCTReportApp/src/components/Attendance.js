@@ -1,4 +1,4 @@
-// src/components/Attendance.js
+// Attendance
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Calendar } from 'react-native-calendars';

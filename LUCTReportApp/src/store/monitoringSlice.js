@@ -1,4 +1,4 @@
-// src/store/monitoringSlice.js
+//monitoringSlice
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { 
   collection, 
@@ -16,9 +16,8 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 
-// ============================================
 // HELPER: Serialize Firestore Timestamps
-// ============================================
+
 
 const serializeFirestoreData = (data) => {
   if (!data) return data;
@@ -75,9 +74,9 @@ const serializeFirestoreData = (data) => {
   return serialized;
 };
 
-// ============================================
+
 // REPORT THUNKS (Firebase Firestore)
-// ============================================
+
 
 // Fetch reports from Firestore
 export const fetchReports = createAsyncThunk(
@@ -141,7 +140,6 @@ export const fetchReports = createAsyncThunk(
       
       return { reports, total: reports.length };
     } catch (error) {
-      console.error('❌ Error fetching reports:', error);
       return rejectWithValue(error.message);
     }
   }
@@ -152,7 +150,6 @@ export const submitReport = createAsyncThunk(
   'monitoring/submitReport',
   async (reportData, { rejectWithValue, getState }) => {
     try {
-      console.log('📝 Submitting report to Firestore:', reportData);
       
       // Get current user from state to ensure proper employee ID
       const state = getState();
@@ -198,7 +195,7 @@ export const submitReport = createAsyncThunk(
         description: reportData.description || '',
         title: reportData.title || '',
         
-        // Metadata - IMPORTANT: Store employee ID in multiple fields for flexible querying
+      
         submittedBy: employeeId,
         lecturerEmployeeId: employeeId,
         lecturerId: employeeId,
@@ -215,7 +212,6 @@ export const submitReport = createAsyncThunk(
       
       // Add to Firestore
       const docRef = await addDoc(collection(db, 'reports'), firestoreData);
-      console.log('✅ Report saved to Firestore with ID:', docRef.id);
       
       // Return with client-side timestamp for immediate display
       const savedReport = {
@@ -231,7 +227,6 @@ export const submitReport = createAsyncThunk(
         success: true
       };
     } catch (error) {
-      console.error('❌ Error submitting report:', error);
       return rejectWithValue(error.message);
     }
   }
@@ -284,7 +279,6 @@ export const updateReportStatus = createAsyncThunk(
         success: true
       };
     } catch (error) {
-      console.error('❌ Error updating report status:', error);
       return rejectWithValue(error.message);
     }
   }
@@ -314,7 +308,6 @@ export const fetchReportById = createAsyncThunk(
         }
       };
     } catch (error) {
-      console.error('❌ Error fetching report:', error);
       return rejectWithValue(error.message);
     }
   }
@@ -327,7 +320,7 @@ export const fetchLecturerReportStats = createAsyncThunk(
     try {
       const reportsRef = collection(db, 'reports');
       
-      // Query reports by lecturer ID (check multiple possible fields)
+      // Query reports by lecturer ID
       const q = query(
         reportsRef, 
         where('submittedBy', '==', lecturerId)
@@ -368,15 +361,13 @@ export const fetchLecturerReportStats = createAsyncThunk(
       
       return stats;
     } catch (error) {
-      console.error('❌ Error fetching lecturer report stats:', error);
       return rejectWithValue(error.message);
     }
   }
 );
 
-// ============================================
+
 // MONITORING THUNKS (Firebase Firestore)
-// ============================================
 
 export const fetchMonitoringData = createAsyncThunk(
   'monitoring/fetchAll',
@@ -406,7 +397,6 @@ export const fetchMonitoringData = createAsyncThunk(
       
       return { records, observations: [] };
     } catch (error) {
-      console.error('❌ Error fetching monitoring data:', error);
       return rejectWithValue(error.message);
     }
   }
@@ -427,7 +417,6 @@ export const createObservation = createAsyncThunk(
         createdAt: new Date().toISOString() 
       };
     } catch (error) {
-      console.error('❌ Error creating observation:', error);
       return rejectWithValue(error.message);
     }
   }
@@ -449,7 +438,6 @@ export const fetchSystemStats = createAsyncThunk(
         totalRatings: 0,
       };
     } catch (error) {
-      console.error('❌ Error fetching system stats:', error);
       return rejectWithValue(error.message);
     }
   }
@@ -482,7 +470,6 @@ export const fetchCourseMonitoring = createAsyncThunk(
         overallProgress: 72,
       };
     } catch (error) {
-      console.error('❌ Error fetching course monitoring:', error);
       return rejectWithValue(error.message);
     }
   }
@@ -507,7 +494,6 @@ export const fetchCourseProgress = createAsyncThunk(
       
       return data || { overallProgress: 60, attendanceRate: 75 };
     } catch (error) {
-      console.error('❌ Error fetching course progress:', error);
       return rejectWithValue(error.message);
     }
   }
@@ -534,7 +520,6 @@ export const fetchCourseActivities = createAsyncThunk(
       
       return { activities };
     } catch (error) {
-      console.error('❌ Error fetching course activities:', error);
       return { activities: [] };
     }
   }
@@ -559,7 +544,6 @@ export const fetchCourseAttendanceAnalytics = createAsyncThunk(
       
       return data || { attendance: 75, present: 15, total: 20 };
     } catch (error) {
-      console.error('❌ Error fetching attendance analytics:', error);
       return rejectWithValue(error.message);
     }
   }
@@ -597,7 +581,6 @@ export const fetchRatings = createAsyncThunk(
       
       return { ratings };
     } catch (error) {
-      console.error('❌ Error fetching ratings:', error);
       return { ratings: [] };
     }
   }
@@ -620,7 +603,6 @@ export const submitRating = createAsyncThunk(
         }
       };
     } catch (error) {
-      console.error('❌ Error submitting rating:', error);
       return rejectWithValue(error.message);
     }
   }
@@ -681,7 +663,6 @@ export const fetchRatingAverages = createAsyncThunk(
       
       return averages;
     } catch (error) {
-      console.error('❌ Error fetching rating averages:', error);
       return {};
     }
   }
@@ -701,15 +682,13 @@ export const trackCourseEngagement = createAsyncThunk(
       
       return { metrics: {} };
     } catch (error) {
-      console.error('❌ Error tracking engagement:', error);
       return rejectWithValue(error.message);
     }
   }
 );
 
-// ============================================
+
 // SLICE
-// ============================================
 
 const monitoringSlice = createSlice({
   name: 'monitoring',
@@ -909,12 +888,8 @@ const monitoringSlice = createSlice({
             lastEngagement: new Date().toISOString(),
           };
         }
-      })
-      
-      // ============================================
-      // REPORT CASES
-      // ============================================
-      
+      })    
+      // REPORT CASES      
       // fetchReports
       .addCase(fetchReports.pending, (state) => {
         state.reportsLoading = true;
@@ -992,9 +967,7 @@ const monitoringSlice = createSlice({
   },
 });
 
-// ============================================
 // EXPORT ACTIONS
-// ============================================
 
 export const { 
   clearError, 
@@ -1008,9 +981,7 @@ export const {
   addReportLocally,
 } = monitoringSlice.actions;
 
-// ============================================
 // SELECTORS
-// ============================================
 
 export const selectMonitoringRecords = (state) => state.monitoring?.records || [];
 export const selectSystemStats = (state) => state.monitoring?.systemStats || null;

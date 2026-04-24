@@ -1,10 +1,10 @@
-// src/config/firebase.js
+// firebase
 import { initializeApp } from 'firebase/app';
 import { 
   initializeAuth, 
   getAuth,
   memoryPersistence,
-  inMemoryPersistence // Try this if memoryPersistence doesn't work
+  inMemoryPersistence 
 } from 'firebase/auth'; 
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';

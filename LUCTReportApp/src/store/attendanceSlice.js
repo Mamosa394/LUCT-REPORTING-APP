@@ -1,4 +1,4 @@
-// src/store/attendanceSlice.js
+// attendanceSlice
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../src/services/api';
 
@@ -54,7 +54,7 @@ export const fetchAttendanceStats = createAsyncThunk(
   }
 );
 
-// NEW: fetchStudentAttendanceSummary - alias for fetchAttendanceStats to match StudentDashboard.js import
+// fetchStudentAttendanceSummary  import
 export const fetchStudentAttendanceSummary = createAsyncThunk(
   'attendance/studentSummary',
   async ({ studentId, moduleId, month, year }, { rejectWithValue }) => {
@@ -69,12 +69,11 @@ export const fetchStudentAttendanceSummary = createAsyncThunk(
   }
 );
 
-// ✅ UPDATED: Fetch students from attendance records for a course
+//  Fetch students from attendance records for a course
 export const fetchStudentsByCourse = createAsyncThunk(
   'attendance/fetchStudentsByCourse',
   async (courseId, { rejectWithValue }) => {
     try {
-      console.log('📚 Fetching students from attendance for course:', courseId);
       
       // Fetch all attendance records for this course
       const attendanceResponse = await api.get('/attendance', {
@@ -84,7 +83,6 @@ export const fetchStudentsByCourse = createAsyncThunk(
       });
       
       const attendanceRecords = attendanceResponse.data?.records || [];
-      console.log(`📚 Found ${attendanceRecords.length} attendance records`);
       
       // Extract unique students from attendance records
       const studentMap = new Map();
@@ -102,26 +100,22 @@ export const fetchStudentsByCourse = createAsyncThunk(
       });
       
       const students = Array.from(studentMap.values());
-      console.log(`✅ Found ${students.length} unique students for course ${courseId}`);
       
       if (students.length > 0) {
-        console.log('📚 Students:', students.map(s => s.name));
       }
       
       return { students, courseId };
     } catch (error) {
-      console.error('❌ Error fetching students from attendance:', error);
       return rejectWithValue(error.message);
     }
   }
 );
 
-// ✅ NEW: Fetch attendance records by course
+//Fetch attendance records by course
 export const fetchAttendanceByCourse = createAsyncThunk(
   'attendance/fetchByCourse',
   async ({ courseId, date }, { rejectWithValue }) => {
     try {
-      console.log('📚 Fetching attendance for course:', courseId, date);
       
       const params = {
         where: [{ field: 'courseId', operator: '==', value: courseId }]
@@ -142,7 +136,6 @@ export const fetchAttendanceByCourse = createAsyncThunk(
         date 
       };
     } catch (error) {
-      console.error('❌ Error fetching attendance by course:', error);
       return rejectWithValue(error.message);
     }
   }
@@ -154,8 +147,8 @@ const attendanceSlice = createSlice({
     records: [],
     stats: null,
     calendarData: {},
-    courseStudents: {}, // Map courseId -> students array
-    attendanceByCourse: {}, // Map courseId -> attendance records
+    courseStudents: {}, 
+    attendanceByCourse: {}, 
     loading: false,
     marking: false,
     error: null,
@@ -261,7 +254,7 @@ const attendanceSlice = createSlice({
         state.error = action.payload;
       })
 
-      // ✅ NEW: Fetch Students By Course
+      //  Fetch Students By Course
       .addCase(fetchStudentsByCourse.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -276,7 +269,7 @@ const attendanceSlice = createSlice({
         state.error = action.payload;
       })
 
-      // ✅ NEW: Fetch Attendance By Course
+      // Fetch Attendance By Course
       .addCase(fetchAttendanceByCourse.pending, (state) => {
         state.loading = true;
       })

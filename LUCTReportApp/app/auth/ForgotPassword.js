@@ -1,4 +1,4 @@
-// app/auth/ForgotPassword.js
+// ForgotPassword
 import React, { useEffect } from 'react';
 import {
   View, Text, StyleSheet, KeyboardAvoidingView, 

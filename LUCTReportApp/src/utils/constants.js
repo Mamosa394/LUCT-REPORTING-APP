@@ -1,4 +1,4 @@
-// src/utils/constants.js
+//constants
 import { COLORS } from '../../config/theme';
 
 // User Roles

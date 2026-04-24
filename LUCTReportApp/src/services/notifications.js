@@ -427,7 +427,7 @@ class NotificationService {
     }
   }
 
-  // ============ App-Specific Notification Methods ============
+  //App-Specific Notification Methods
 
   /**
    * Send attendance reminder notification

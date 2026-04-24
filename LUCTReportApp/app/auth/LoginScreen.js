@@ -1,4 +1,4 @@
-// app/auth/LoginScreen.js
+// LoginScreen
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Image,
 } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,37 +17,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { login, clearError } from '../../src/store/authSlice';
 import { loginSchema } from '../../src/utils/validators';
 import { COLORS, spacing, typography } from '../../config/theme';
-
-// Debug logs for imports
-console.log('🔍 [LoginScreen] Starting imports check...');
-
-// Check theme imports
-console.log('📦 [LoginScreen] COLORS:', COLORS ? '✅ Loaded' : '❌ UNDEFINED');
-console.log('📦 [LoginScreen] COLORS.primary:', COLORS?.primary);
-console.log('📦 [LoginScreen] spacing:', spacing ? '✅ Loaded' : '❌ UNDEFINED');
-console.log('📦 [LoginScreen] spacing.lg:', spacing?.lg);
-console.log('📦 [LoginScreen] typography:', typography ? '✅ Loaded' : '❌ UNDEFINED');
-console.log('📦 [LoginScreen] typography.h1:', typography?.h1);
-
 // Dynamic import for UI components with error handling
 let Input, Button;
 try {
   const UI = require('../../src/components/UI');
   Input = UI.Input;
   Button = UI.Button;
-  console.log('✅ [LoginScreen] UI components loaded successfully');
-  console.log('📦 [LoginScreen] Input type:', typeof Input);
-  console.log('📦 [LoginScreen] Button type:', typeof Button);
 } catch (error) {
-  console.error('❌ [LoginScreen] Failed to load UI components:', error.message);
+  console.error(' LoginScreen Failed to load UI components:', error.message);
 }
-
-// Check other imports
-console.log('📦 [LoginScreen] loginSchema:', loginSchema ? '✅ Loaded' : '❌ UNDEFINED');
-console.log('📦 [LoginScreen] login action:', typeof login);
-console.log('📦 [LoginScreen] clearError action:', typeof clearError);
-
-// Role-specific dashboard routes - UPDATED (removed admin)
+// Role-specific dashboard routes 
 const getDashboardRoute = (role) => {
   switch (role) {
     case 'student':
@@ -62,7 +42,7 @@ const getDashboardRoute = (role) => {
   }
 };
 
-// Get role display name - UPDATED (removed admin, added admin note for PL)
+// Get role display name
 const getRoleName = (role) => {
   switch (role) {
     case 'student':
@@ -72,7 +52,7 @@ const getRoleName = (role) => {
     case 'prl':
       return 'Principal Lecturer';
     case 'pl':
-      return 'Program Leader (Administrator)';
+      return 'Program Leader';
     default:
       return 'User';
   }
@@ -97,17 +77,13 @@ const getWelcomeMessage = (role, name) => {
 };
 
 export default function LoginScreen({ navigation }) {
-  console.log('🎬 [LoginScreen] Component rendering');
   
   const dispatch = useDispatch();
   const authState = useSelector(state => {
-    console.log('🔍 [LoginScreen] useSelector called');
     return state.auth;
   });
   
   const { isLoading, error, user } = authState || { isLoading: false, error: null, user: null };
-  
-  console.log('📊 [LoginScreen] Auth state:', { isLoading, error, hasUser: !!user });
 
   const {
     control,
@@ -121,14 +97,10 @@ export default function LoginScreen({ navigation }) {
     },
   });
 
-  console.log('📝 [LoginScreen] Form initialized, errors:', errors);
-
   useEffect(() => {
-    console.log('🔄 [LoginScreen] useEffect running, error:', error);
     if (error) {
       Alert.alert('Login Failed', error, [
         { text: 'OK', onPress: () => {
-          console.log('🔘 [LoginScreen] Error alert closed, clearing error');
           dispatch(clearError());
         }},
       ]);
@@ -138,23 +110,18 @@ export default function LoginScreen({ navigation }) {
   // Check if user is already logged in
   useEffect(() => {
     if (user && user.role) {
-      console.log('🔄 [LoginScreen] User already logged in. AppNavigator will handle redirection via state.');
     }
   }, [user]);
 
   const onSubmit = async (data) => {
-    console.log('📤 [LoginScreen] Form submitted with:', { email: data.email, password: '***' });
     
     try {
       const result = await dispatch(login(data)).unwrap();
-      console.log('✅ [LoginScreen] Login successful:', result);
       
       const userRole = result.user?.role || result.role;
-      console.log('👤 [LoginScreen] User role:', userRole);
       
       const validRoles = ['student', 'lecturer', 'prl', 'pl'];
       if (!validRoles.includes(userRole)) {
-        console.error('❌ [LoginScreen] Invalid role detected:', userRole);
         Alert.alert('Error', 'Invalid user role. Please contact support.');
         return;
       }
@@ -167,19 +134,17 @@ export default function LoginScreen({ navigation }) {
           {
             text: 'Continue',
             onPress: () => {
-              console.log('🚀 [LoginScreen] Alert dismissed. AppNavigator will now mount the correct dashboard based on the authenticated state.');
             }
           }
         ]
       );
     } catch (err) {
-      console.error('❌ [LoginScreen] Login failed:', err);
+      console.error('LoginScreen Login failed:', err);
     }
   };
 
-  // Safety check - if components aren't loaded, show error
+  // if components aren't loaded, show error
   if (!Input || !Button) {
-    console.error('❌ [LoginScreen] Input or Button components not loaded');
     return (
       <View style={[styles.container, styles.errorContainer]}>
         <Text style={styles.errorText}>Error: UI Components failed to load</Text>
@@ -190,7 +155,6 @@ export default function LoginScreen({ navigation }) {
 
   // Safety check for theme
   if (!COLORS || !spacing || !typography) {
-    console.error('❌ [LoginScreen] Theme objects not loaded properly');
     return (
       <View style={[styles.container, styles.errorContainer]}>
         <Text style={styles.errorText}>Error: Theme configuration missing</Text>
@@ -207,7 +171,11 @@ export default function LoginScreen({ navigation }) {
       <View style={styles.scrollContent}>
         {/* Logo and App Name */}
         <View style={styles.logoContainer}>
-          <Ionicons name="school-outline" size={80} color={COLORS.primary} />
+           <Image 
+    source={require('../../assets/LimkokwingUniversity.png')} 
+    style={styles.logo}
+    resizeMode="contain"
+  />
           <Text style={styles.appName}>LUCT Reporting</Text>
           <Text style={styles.tagline}>Academic Management System</Text>
         </View>
@@ -222,13 +190,12 @@ export default function LoginScreen({ navigation }) {
             control={control}
             name="email"
             render={({ field: { onChange, value } }) => {
-              console.log('🎨 [LoginScreen] Rendering email input, value:', value);
               return (
                 <Input
                   label="Email Address"
                   value={value}
                   onChangeText={onChange}
-                  placeholder="you@luct.edu"
+                  placeholder="email@gmail.com"
                   keyboardType="email-address"
                   autoCapitalize="none"
                   error={errors.email?.message}
@@ -249,7 +216,6 @@ export default function LoginScreen({ navigation }) {
             control={control}
             name="password"
             render={({ field: { onChange, value } }) => {
-              console.log('🎨 [LoginScreen] Rendering password input');
               return (
                 <Input
                   label="Password"
@@ -273,7 +239,6 @@ export default function LoginScreen({ navigation }) {
           {/* Forgot Password Link */}
           <TouchableOpacity
             onPress={() => {
-              console.log('🔗 [LoginScreen] Navigate to ForgotPassword');
               navigation.navigate('ForgotPassword');
             }}
             style={styles.forgotPassword}
@@ -297,7 +262,6 @@ export default function LoginScreen({ navigation }) {
           <Text style={styles.footerText}>Don't have an account? </Text>
           <TouchableOpacity 
             onPress={() => {
-              console.log('🔗 [LoginScreen] Navigate to Register');
               navigation.navigate('Register');
             }}
           >
@@ -397,4 +361,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
   },
+  logo: {
+  width: 100,
+  height: 100,
+  marginBottom: spacing?.md || 16,
+},
 });

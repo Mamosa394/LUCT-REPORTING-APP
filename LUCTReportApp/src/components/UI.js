@@ -1,4 +1,4 @@
-// src/components/UI.js
+//UI
 import React, { useState } from 'react';
 import { 
   View, 

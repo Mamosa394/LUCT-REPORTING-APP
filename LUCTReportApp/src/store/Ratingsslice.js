@@ -1,4 +1,4 @@
-// src/store/ratingsSlice.js
+// ratingsSlice
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import firebaseApi from '../../src/services/api';
 
@@ -33,14 +33,14 @@ export const submitRating = createAsyncThunk(
       // Use FirebaseApi to save to Firestore
       const response = await firebaseApi.post('/ratings', ratingToSave);
       
-      console.log('✅ Rating submitted successfully:', response.data);
+      console.log(' Rating submitted successfully:', response.data);
       
       return {
         id: response.data.id,
         ...ratingToSave,
       };
     } catch (error) {
-      console.error('❌ Failed to submit rating:', error);
+      console.error(' Failed to submit rating:', error);
       return rejectWithValue(error.message);
     }
   }
@@ -94,11 +94,9 @@ export const fetchRatings = createAsyncThunk(
       const response = await firebaseApi.get('/ratings', { params: queryParams });
       
       const ratings = response.data.ratings || [];
-      console.log(`✅ Fetched ${ratings.length} ratings`);
       
       return { ratings };
     } catch (error) {
-      console.error('❌ Failed to fetch ratings:', error);
       return rejectWithValue(error.message);
     }
   }
@@ -155,17 +153,14 @@ export const fetchRatingsAnalytics = createAsyncThunk(
         recentRatings: ratings.slice(0, 5) // Last 5 ratings
       };
       
-      console.log(`✅ Analytics calculated for lecturer ${lecturerId}`);
-      
       return { analytics };
     } catch (error) {
-      console.error('❌ Failed to fetch analytics:', error);
       return rejectWithValue(error.message);
     }
   }
 );
 
-// Fetch lecturer's courses with ratings
+// Fetch lecturer courses with ratings
 export const fetchLecturerCoursesWithRatings = createAsyncThunk(
   'ratings/fetchLecturerCourses',
   async (lecturerId, { rejectWithValue }) => {
@@ -212,7 +207,6 @@ export const fetchLecturerCoursesWithRatings = createAsyncThunk(
       
       return { courses: coursesWithRatings };
     } catch (error) {
-      console.error('❌ Failed to fetch lecturer courses:', error);
       return rejectWithValue(error.message);
     }
   }

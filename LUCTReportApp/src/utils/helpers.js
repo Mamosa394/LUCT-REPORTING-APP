@@ -1,4 +1,4 @@
-// src/utils/helpers.js
+// helpers
 import { Platform } from 'react-native';
 import { VALIDATION_PATTERNS, DATE_FORMATS } from '../../src/utils/constants';
 import moment from 'moment';

@@ -1,4 +1,4 @@
-// src/store/courseSlice.js
+//courseSlice
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../src/services/api';
 
@@ -6,7 +6,6 @@ export const fetchCourses = createAsyncThunk(
   'courses/fetchAll',
   async (filters = {}, { rejectWithValue }) => {
     try {
-      console.log('📚 Fetching courses with filters:', filters);
       
       // Build query parameters for the API
       const params = {};
@@ -34,13 +33,12 @@ export const fetchCourses = createAsyncThunk(
       
       const response = await api.getCollection('courses', params);
       
-      // ✅ Return consistent structure
+      // Return consistent structure
       return {
         courses: response.data.courses || [],
         total: response.data.total || response.data.courses?.length || 0
       };
     } catch (error) {
-      console.error('❌ Error fetching courses:', error);
       return rejectWithValue(error.message);
     }
   }
@@ -50,11 +48,9 @@ export const fetchCourseById = createAsyncThunk(
   'courses/fetchById',
   async (courseId, { rejectWithValue }) => {
     try {
-      console.log('📚 Fetching course by ID:', courseId);
       const response = await api.getDocument('courses', courseId);
       return response.data.course;
     } catch (error) {
-      console.error('❌ Error fetching course:', error);
       return rejectWithValue(error.message);
     }
   }
@@ -64,7 +60,6 @@ export const createCourse = createAsyncThunk(
   'courses/create',
   async (courseData, { rejectWithValue }) => {
     try {
-      console.log('📚 Creating course:', courseData.name);
       
       // Prepare course data for Firestore
       const newCourse = {
@@ -87,10 +82,10 @@ export const createCourse = createAsyncThunk(
       };
       
       const response = await api.postDocument('courses', newCourse);
-      console.log('✅ Course created successfully:', courseData.code);
+      console.log('Course created successfully:', courseData.code);
       return response.data;
     } catch (error) {
-      console.error('❌ Error creating course:', error);
+      console.error('Error creating course:', error);
       return rejectWithValue(error.message);
     }
   }
@@ -100,7 +95,6 @@ export const updateCourse = createAsyncThunk(
   'courses/update',
   async ({ id, data }, { rejectWithValue }) => {
     try {
-      console.log('📚 Updating course:', id);
       
       // Prepare update data
       const updateData = {
@@ -122,10 +116,8 @@ export const updateCourse = createAsyncThunk(
       };
       
       const response = await api.updateDocument('courses', id, updateData);
-      console.log('✅ Course updated successfully');
       return { id, ...response.data };
     } catch (error) {
-      console.error('❌ Error updating course:', error);
       return rejectWithValue(error.message);
     }
   }
@@ -135,12 +127,12 @@ export const deleteCourse = createAsyncThunk(
   'courses/delete',
   async (courseId, { rejectWithValue }) => {
     try {
-      console.log('📚 Deleting course:', courseId);
+      console.log(' Deleting course:', courseId);
       await api.deleteDocument('courses', courseId);
-      console.log('✅ Course deleted successfully');
+      console.log(' Course deleted successfully');
       return courseId;
     } catch (error) {
-      console.error('❌ Error deleting course:', error);
+      console.error(' Error deleting course:', error);
       return rejectWithValue(error.message);
     }
   }
@@ -151,7 +143,6 @@ export const fetchCoursesByLecturer = createAsyncThunk(
   'courses/fetchByLecturer',
   async (employeeId, { rejectWithValue }) => {
     try {
-      console.log('📚 Fetching courses for lecturer employeeId:', employeeId);
       
       // Use employeeId instead of lecturerId
       const response = await api.getCollection('courses', {
@@ -160,15 +151,13 @@ export const fetchCoursesByLecturer = createAsyncThunk(
         order: 'desc'
       });
       
-      console.log('📚 API Response:', response.data);
-      
       const courses = response.data?.courses || [];
       const total = response.data?.total || courses.length;
       
-      console.log(`✅ Found ${courses.length} courses for employeeId: ${employeeId}`);
+      console.log(`Found ${courses.length} courses for employeeId: ${employeeId}`);
       
       if (courses.length > 0) {
-        console.log('📚 Courses found:', courses.map(c => `${c.code}: ${c.name}`));
+        console.log('Courses found:', courses.map(c => `${c.code}: ${c.name}`));
       }
       
       return {
@@ -176,7 +165,7 @@ export const fetchCoursesByLecturer = createAsyncThunk(
         total: total
       };
     } catch (error) {
-      console.error('❌ Error fetching lecturer courses:', error);
+      console.error(' Error fetching lecturer courses:', error);
       return rejectWithValue(error.message);
     }
   }
@@ -187,20 +176,18 @@ export const fetchCoursesByStream = createAsyncThunk(
   'courses/fetchByStream',
   async (stream, { rejectWithValue }) => {
     try {
-      console.log('📚 Fetching courses for stream:', stream);
       const response = await api.getCollection('courses', {
         where: [{ field: 'stream', operator: '==', value: stream }],
         orderBy: 'createdAt',
         order: 'desc'
       });
       
-      // ✅ Return consistent structure
+      // Return consistent structure
       return {
         courses: response.data.courses || [],
         total: response.data.total || response.data.courses?.length || 0
       };
     } catch (error) {
-      console.error('❌ Error fetching stream courses:', error);
       return rejectWithValue(error.message);
     }
   }
@@ -211,7 +198,6 @@ export const fetchModules = createAsyncThunk(
   'courses/fetchModules',
   async (params = {}, { rejectWithValue }) => {
     try {
-      console.log('📚 Fetching modules with params:', params);
       
       const queryParams = {};
       if (params.courseId) {
@@ -224,13 +210,12 @@ export const fetchModules = createAsyncThunk(
       
       const response = await api.getCollection('modules', queryParams);
       
-      // ✅ Return consistent structure
+      //  Return consistent structure
       return {
         modules: response.data.modules || [],
         total: response.data.total || response.data.modules?.length || 0
       };
     } catch (error) {
-      console.error('❌ Error fetching modules:', error);
       return rejectWithValue(error.message);
     }
   }
@@ -240,7 +225,6 @@ export const createModule = createAsyncThunk(
   'courses/createModule',
   async (moduleData, { rejectWithValue }) => {
     try {
-      console.log('📚 Creating module:', moduleData.name);
       
       const newModule = {
         name: moduleData.name,
@@ -257,10 +241,8 @@ export const createModule = createAsyncThunk(
       };
       
       const response = await api.postDocument('modules', newModule);
-      console.log('✅ Module created successfully');
       return response.data;
     } catch (error) {
-      console.error('❌ Error creating module:', error);
       return rejectWithValue(error.message);
     }
   }
@@ -270,7 +252,6 @@ export const assignLecturer = createAsyncThunk(
   'courses/assignLecturer',
   async ({ moduleId, lecturerId, lecturerName, lecturerEmail }, { rejectWithValue }) => {
     try {
-      console.log('📚 Assigning lecturer to module:', moduleId);
       
       const updateData = {
         lecturerId,
@@ -281,10 +262,8 @@ export const assignLecturer = createAsyncThunk(
       };
       
       const response = await api.updateDocument('modules', moduleId, updateData);
-      console.log('✅ Lecturer assigned successfully');
       return response.data;
     } catch (error) {
-      console.error('❌ Error assigning lecturer:', error);
       return rejectWithValue(error.message);
     }
   }
@@ -325,12 +304,10 @@ const coursesSlice = createSlice({
         state.loading = false;
         state.courses = action.payload.courses || [];
         state.totalCourses = action.payload.total || 0;
-        console.log(`✅ Courses loaded: ${state.courses.length} courses, Total: ${state.totalCourses}`);
       })
       .addCase(fetchCourses.rejected, (state, action) => {
         state.loading = false; 
         state.error = action.payload;
-        console.error('❌ Courses fetch rejected:', action.payload);
       })
 
       // Fetch Course By ID
@@ -354,7 +331,6 @@ const coursesSlice = createSlice({
         state.loading = false;
         state.courses.unshift(action.payload);
         state.totalCourses += 1;
-        console.log('✅ Course added to state');
       })
       .addCase(createCourse.rejected, (state, action) => {
         state.loading = false;
@@ -374,7 +350,6 @@ const coursesSlice = createSlice({
         if (state.selectedCourse?.id === action.payload.id) {
           state.selectedCourse = action.payload;
         }
-        console.log('✅ Course updated in state');
       })
       .addCase(updateCourse.rejected, (state, action) => {
         state.loading = false;
@@ -389,7 +364,6 @@ const coursesSlice = createSlice({
         state.loading = false;
         state.courses = state.courses.filter(c => c.id !== action.payload);
         state.totalCourses -= 1;
-        console.log('✅ Course deleted from state');
       })
       .addCase(deleteCourse.rejected, (state, action) => {
         state.loading = false;
@@ -404,7 +378,6 @@ const coursesSlice = createSlice({
         state.loading = false;
         state.courses = action.payload.courses || [];
         state.totalCourses = action.payload.total || 0;
-        console.log(`✅ Lecturer courses loaded: ${state.courses.length} courses, Total: ${state.totalCourses}`);
       })
       .addCase(fetchCoursesByLecturer.rejected, (state, action) => {
         state.loading = false;
@@ -419,7 +392,6 @@ const coursesSlice = createSlice({
         state.loading = false;
         state.courses = action.payload.courses || [];
         state.totalCourses = action.payload.total || 0;
-        console.log(`✅ Stream courses loaded: ${state.courses.length} courses`);
       })
       .addCase(fetchCoursesByStream.rejected, (state, action) => {
         state.loading = false;
@@ -434,7 +406,6 @@ const coursesSlice = createSlice({
         state.modulesLoading = false;
         state.modules = action.payload.modules || [];
         state.totalModules = action.payload.total || 0;
-        console.log(`✅ Modules loaded: ${state.modules.length} modules`);
       })
       .addCase(fetchModules.rejected, (state, action) => {
         state.modulesLoading = false; 

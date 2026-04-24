@@ -1,4 +1,4 @@
-// src/services/api.js
+// api
 
 import { 
   collection, 
@@ -10,11 +10,11 @@ import {
   addDoc, 
   updateDoc, 
   deleteDoc,
-  setDoc,  // ✅ Added for upsert operations
+  setDoc,  
   orderBy,
   limit,
   Timestamp,
-  writeBatch  // ✅ Added for batch operations
+  writeBatch  
 } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 
@@ -105,10 +105,10 @@ class FirebaseApi {
     }
   }
 
-  // ✅ FIXED: Generic POST (create) - Only this method is updated
+  // Generic POST (create) 
   async postDocument(collectionName, data) {
     try {
-      console.log(`📝 Creating document in ${collectionName}:`, data);
+      console.log(` Creating document in ${collectionName}:`, data);
       
       // Create a clean copy of the data for Firestore
       const firestoreData = { ...data };
@@ -140,7 +140,7 @@ class FirebaseApi {
       // Add to Firestore
       const docRef = await addDoc(collection(db, collectionName), firestoreData);
       
-      console.log(`✅ Document created in ${collectionName} with ID:`, docRef.id);
+      console.log(`Document created in ${collectionName} with ID:`, docRef.id);
       
       return { 
         data: { 
@@ -188,11 +188,10 @@ class FirebaseApi {
     }
   }
 
-  // ✅ ATTENDANCE METHODS
+  // ATTENDANCE METHODS
   
   /**
    * Mark attendance for a student
-   * Uses setDoc with merge: true to create or update attendance record
    */
   async markAttendance(attendanceData) {
     try {
@@ -244,7 +243,7 @@ class FirebaseApi {
       const docRef = doc(db, 'attendance', recordId);
       await setDoc(docRef, attendanceRecord, { merge: true });
       
-      console.log('✅ Attendance marked successfully:', attendanceRecord);
+      console.log('Attendance marked successfully:', attendanceRecord);
       
       return {
         success: true,
@@ -254,13 +253,13 @@ class FirebaseApi {
         }
       };
     } catch (error) {
-      console.error('❌ Error marking attendance:', error);
+      console.error(' Error marking attendance:', error);
       throw error;
     }
   }
 
   /**
-   * Mark attendance for multiple students (lecturer bulk marking)
+   * Mark attendance for multiple students
    */
   async markBulkAttendance(attendanceDataArray) {
     try {
@@ -298,7 +297,6 @@ class FirebaseApi {
         }
       };
     } catch (error) {
-      console.error('❌ Error marking bulk attendance:', error);
       throw error;
     }
   }
@@ -354,7 +352,6 @@ class FirebaseApi {
         }
       };
     } catch (error) {
-      console.error('❌ Error fetching attendance:', error);
       throw error;
     }
   }
@@ -419,12 +416,11 @@ class FirebaseApi {
             excused,
             percentage,
             monthlyStats,
-            records: records.slice(0, 10) // Return last 10 records
+            records: records.slice(0, 10)
           }
         }
       };
     } catch (error) {
-      console.error('❌ Error fetching attendance stats:', error);
       throw error;
     }
   }
@@ -449,7 +445,6 @@ class FirebaseApi {
         }
       };
     } catch (error) {
-      console.error('❌ Error updating attendance:', error);
       throw error;
     }
   }
@@ -488,7 +483,6 @@ class FirebaseApi {
       
       return { data: { record: null } };
     } catch (error) {
-      console.error('❌ Error checking today attendance:', error);
       throw error;
     }
   }
@@ -512,7 +506,7 @@ class FirebaseApi {
     return userData;
   }
 
-  // ✅ API endpoint router
+  //  API endpoint router
   async get(endpoint, options = {}) {
     const { params = {} } = options;
     
@@ -535,9 +529,8 @@ class FirebaseApi {
     throw new Error(`Unknown GET endpoint: ${endpoint}`);
   }
 
-  // ✅ ADDED console log for debugging
+ 
   async post(endpoint, data) {
-    console.log(`📤 POST request to ${endpoint}:`, data);
     
     if (endpoint === '/attendance/mark') {
       return await this.markAttendance(data);

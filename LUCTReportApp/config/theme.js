@@ -1,4 +1,4 @@
-// src/config/theme.js
+// theme
 
 import { DefaultTheme } from 'react-native-paper';
 

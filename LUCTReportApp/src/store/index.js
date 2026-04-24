@@ -1,4 +1,4 @@
-// src/store/index.js
+//index
 import { configureStore } from '@reduxjs/toolkit';
 import authReducer from './authSlice';
 import attendanceReducer from './attendanceSlice';
@@ -12,7 +12,7 @@ const store = configureStore({
     attendance: attendanceReducer, // Handles attendance records and stats
     courses: coursesReducer,      // Handles courses and modules
     monitoring: monitoringReducer, // Handles monitoring data and stats
-    ratings: ratingsReducer,      // ✅ Handles ratings and analytics
+    ratings: ratingsReducer,      //  Handles ratings and analytics
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

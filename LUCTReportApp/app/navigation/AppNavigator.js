@@ -1,4 +1,4 @@
-﻿// app/navigation/AppNavigator.js - Fixed version
+﻿//AppNavigator
 
 import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
@@ -39,7 +39,7 @@ import PRLMonitoring from '../prl/prlMonitoring';
 import PRLRatings from '../prl/prlRatings';
 import PRLProfile from '../prl/prlProfile';
 
-// PL screens (Program Leader)
+// PL screens 
 import PLDashboard from '../pl/plDashboard';
 import PLCourses from '../pl/plCourses';
 import PLLecturers from '../pl/plLecturers';
@@ -50,7 +50,7 @@ import PLProfile from '../pl/plProfile';
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// --- Student Stack Navigator (FIXED - removed duplicate) ---
+// Student Stack Navigator
 function StudentStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -59,7 +59,7 @@ function StudentStack() {
   );
 }
 
-// --- Student Tab Navigator ---
+// Student Tab Navigator 
 function StudentTabs() {
   return (
     <Tab.Navigator
@@ -89,7 +89,7 @@ function StudentTabs() {
   );
 }
 
-// --- Lecturer Stack Navigator ---
+// Lecturer Stack Navigator
 function LecturerStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -131,7 +131,7 @@ function LecturerStack() {
   );
 }
 
-// --- Lecturer Tab Navigator ---
+//Lecturer Tab Navigator
 function LecturerTabs() {
   return (
     <Tab.Navigator
@@ -167,9 +167,8 @@ function LecturerTabs() {
   );
 }
 
-// --- PRL Stack Navigator ---
+// PRL Stack Navigator
 function PRLStack() {
-  console.log('🔵 [PRLStack] Rendering PRL Stack Navigator');
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="PRLTabs" component={PRLTabs} />
@@ -188,7 +187,7 @@ function PRLStack() {
   );
 }
 
-// --- PRL Tab Navigator ---
+//PRL Tab Navigato
 function PRLTabs() {
   return (
     <Tab.Navigator
@@ -220,9 +219,9 @@ function PRLTabs() {
   );
 }
 
-// --- PL Stack Navigator ---
+//PL Stack Navigator
 function PLStack() {
-  console.log('🔵 [PLStack] Rendering PL Stack Navigator');
+
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="PLTabs" component={PLTabs} />
@@ -241,7 +240,7 @@ function PLStack() {
   );
 }
 
-// --- PL Tab Navigator ---
+//PL Tab Navigator
 function PLTabs() {
   return (
     <Tab.Navigator
@@ -277,7 +276,7 @@ function PLTabs() {
   );
 }
 
-// --- Main App Navigator ---
+//Main App Navigator
 export default function AppNavigator() {
   const dispatch = useDispatch();
   
@@ -285,19 +284,15 @@ export default function AppNavigator() {
   const { isAuthenticated, user, isInitialized } = auth;
 
   useEffect(() => {
-    console.log('🔄 [AppNavigator] Loading stored user data');
     dispatch(loadStoredUser());
   }, [dispatch]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    
-    console.log('⏰ [AppNavigator] Starting session timeout checker');
     const sessionCheckInterval = setInterval(async () => {
       try {
         const expired = await dispatch(checkSessionTimeout()).unwrap();
         if (expired) {
-          console.log('⏰ [AppNavigator] Session expired, user will be logged out');
         }
       } catch (error) {
         console.error('Session check error:', error);
@@ -305,17 +300,13 @@ export default function AppNavigator() {
     }, 60000);
     
     return () => {
-      console.log('🛑 [AppNavigator] Stopping session timeout checker');
       clearInterval(sessionCheckInterval);
     };
   }, [dispatch, isAuthenticated]);
 
   if (!isInitialized) {
-    console.log('⏳ [AppNavigator] Auth not initialized yet, showing splash');
     return null;
   }
-
-  console.log('🔵 [AppNavigator] User role:', user?.role);
 
   return (
     <NavigationContainer>
